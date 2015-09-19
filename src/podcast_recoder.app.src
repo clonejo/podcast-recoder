@@ -1,0 +1,23 @@
+{application, 'podcast_recoder',
+ [{description, "A proxy which recodes podcasts to low-bitrate opus to save bandwidth. (allows for acceptable voice quality at 24kbit/s (that's ~10MB/h!), but your client has to support opus.)"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {'podcast_recoder_app', []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    cowboy,
+    mnesia,
+    ssl,
+    inets
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {contributors, []},
+  {licenses, []},
+  {links, []}
+ ]}.
+
+%% vim: ft=erlang
