@@ -16,5 +16,5 @@ media_file_worker: (started by media_files)
 
 stuff:
  - regularly request orig url for each feed/media file. delete cached version if 404.
- - web page which lists cached versions of feeds and media files
- - web page which lists download status of feeds/media files
+ - web page which lists cached versions of feeds and media files (show mnesia tables (feeds, media_files)
+ - web page which lists download status of feeds/media files (data from feeds/media_files)
