@@ -15,7 +15,7 @@
 
 -record(state, {jobs=#{}}).
 
--record(podrec_feed, {local, orig_url}).
+-record(podrec_feed, {local_name, orig_url, last_fetch}).
 
 -compile(export_all).
 
@@ -35,7 +35,7 @@ get_feed(LocalName) when is_binary(LocalName) ->
     CachedPath = get_cached_file_path(LocalName),
     case exists_cached_file(CachedPath) of
         true ->
-            case is_cached_file_recent(CachedPath) of
+            case is_cached_file_recent(LocalName) of
                 true ->
                     lager:info("Req:~p cache is recent", [LocalName]),
                     {ok, CachedPath};
@@ -83,6 +83,12 @@ handle_call({try_fetch, LocalName, OriginalUrl}, From, #state{jobs=Jobs}=State) 
     {noreply, NewState}.
 
 handle_cast({worker_terminated, LocalName, Msg}, State) ->
+    case Msg of
+        {ok, _} ->
+            ok = update_feed_recency(LocalName);
+        {error, _Reason} ->
+            ok
+    end,
     #{notify_clients := Clients} = get_job_entry(LocalName, State#state.jobs),
     lists:foreach(fun(Client) ->
                           gen_server:reply(Client, Msg) end, Clients),
@@ -108,12 +114,23 @@ get_cached_file_path(LocalName) when is_bitstring(LocalName) ->
 exists_cached_file(Path) ->
     filelib:is_regular(Path).
 
-is_cached_file_recent(Path) ->
-    % TODO: do not use mtime here, bc that's not updated on each successful fetch!
-    % instead, store erlang system time with feed in db and check against that
-    FeedRecent = podrec_util:get_env(feed_recent, 600),
-    MTime = podrec_util:get_file_mtime(Path),
-    os:system_time(seconds) - MTime < FeedRecent.
+is_cached_file_recent(LocalName) when is_binary(LocalName) ->
+    T = fun() -> mnesia:read(podrec_feed, LocalName) end,
+    case mnesia:transaction(T) of
+        {atomic, [#podrec_feed{last_fetch=LastFetch}]} ->
+            FeedRecent = podrec_util:get_env(feed_recent, 600),
+            erlang:system_time(seconds) - LastFetch < FeedRecent;
+        {atomic, []} ->
+            false
+    end.
+
+update_feed_recency(LocalName) when is_binary(LocalName) ->
+    Now = erlang:system_time(seconds),
+    T = fun() -> [Feed] = mnesia:read(podrec_feed, LocalName),
+                 mnesia:write(Feed#podrec_feed{last_fetch=Now})
+        end,
+    {atomic, ok} = mnesia:transaction(T),
+    ok.
 
 try_fetch(LocalName) ->
     case get_feed_original_url(LocalName) of
@@ -126,13 +143,25 @@ try_fetch(LocalName) ->
             {error, Reason}
     end.
 
-get_feed_original_url(LocalName) ->
-    % this will need to change for implementing paged feeds
-    Feeds = podrec_util:get_env(feeds),
-    case maps:get(LocalName, Feeds, undefined) of
-        undefined -> {error, unknown_feed};
-        OriginalUrl -> {ok, OriginalUrl}
+get_feed_original_url(LocalName) when is_binary(LocalName) ->
+    T = fun() -> mnesia:read(podrec_feed, LocalName) end,
+    case mnesia:transaction(T) of
+        {atomic, [Feed]} ->
+            {ok, Feed#podrec_feed.orig_url};
+        {atomic, []} ->
+            ConfiguredFeeds = podrec_util:get_env(feeds),
+            case maps:get(LocalName, ConfiguredFeeds, undefined) of
+                undefined -> {error, unknown_feed};
+                OriginalUrl ->
+                    ok = add_feed_to_db(#podrec_feed{local_name=LocalName, orig_url=OriginalUrl}),
+                    {ok, OriginalUrl}
+            end
     end.
+
+add_feed_to_db(Feed) when is_record(Feed, podrec_feed) ->
+    lager:info("adding ~p to database", [Feed#podrec_feed.local_name]),
+    {atomic, ok} = mnesia:transaction(fun() -> mnesia:write(Feed) end),
+    ok.
 
 
 % job entry functions
