@@ -70,7 +70,6 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
     ReqHeaders = case CachedMTime of
                      undefined -> [];
                      CachedMTime when is_integer(CachedMTime) ->
-                         lager:info("cached time: ~p", [time_format_http(CachedMTime)]),
                          [{"if-modified-since", time_format_http(CachedMTime)}]
                  end,
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],

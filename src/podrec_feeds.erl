@@ -118,6 +118,7 @@ is_cached_file_recent(LocalName) when is_binary(LocalName) ->
     T = fun() -> mnesia:read(podrec_feed, LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [#podrec_feed{last_fetch=LastFetch}]} ->
+            % TODO: LastFetch might be undefined
             FeedRecent = podrec_util:get_env(feed_recent, 600),
             erlang:system_time(seconds) - LastFetch < FeedRecent;
         {atomic, []} ->
@@ -144,6 +145,8 @@ try_fetch(LocalName) ->
     end.
 
 get_feed_original_url(LocalName) when is_binary(LocalName) ->
+    % TODO: rewrite to also check if orig_url in db and sys.config are
+    %       different, update db if necessary
     T = fun() -> mnesia:read(podrec_feed, LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [Feed]} ->
