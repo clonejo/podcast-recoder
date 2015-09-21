@@ -1,7 +1,7 @@
 -module(podrec_util).
 
 -export([get_env/1, get_env/2,
-         generate_temp_filepath/1,
+         generate_temp_filepath/0,
          move_file/2,
          get_file_mtime/1,
          set_file_mtime/2]).
@@ -17,10 +17,9 @@ get_env(Key, Default) ->
         {ok, Value} -> Value
     end.
 
-generate_temp_filepath(Extension) ->
+generate_temp_filepath() ->
     TempDir = podrec_util:get_env(temp_dir, <<"/tmp/podcast_recoder">>),
-    filename:join([TempDir, list_to_binary([integer_to_list(erlang:unique_integer([positive])),
-                                            $., Extension])]).
+    filename:join([TempDir, integer_to_binary(erlang:unique_integer([positive]))]).
 
 move_file(Source, Destination) ->
     ok = filelib:ensure_dir(Destination),
