@@ -44,6 +44,9 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName}=State) ->
                             {error, Reason} ->
                                 {error, Reason}
                         end;
+                    {error, {timeout, fetching}=Reason} ->
+                        lager:notice("Req:~p timed out while fetching", [LocalName]),
+                        {error, Reason};
                     {error, Reason} ->
                         {error, Reason}
                 end,
@@ -71,7 +74,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                      undefined -> [];
                      CachedMTime when is_integer(CachedMTime) ->
                          [{"if-modified-since", time_format_http(CachedMTime)}]
-                 end,
+                  end ++ [{"accept-encoding", "gzip"}],
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],
                              [{sync, false}, {stream, self}]),
     OriginalFilePath = podrec_util:generate_temp_filepath(<<"xml">>),
@@ -83,9 +86,21 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                                 Str when is_list(Str) ->
                                     qdate:to_unixtime(Str)
                             end,
+            case proplists:get_value("content-encoding", Headers) of
+                undefined ->
+                    ok;
+                "gzip" ->
+                    % TODO: do streaming compression, so we can decompress
+                    %       files larger than system memory
+                    {ok, Compressed} = file:read_file(OriginalFilePath),
+                    Decompressed = zlib:gunzip(Compressed),
+                    ok = file:write_file(OriginalFilePath, Decompressed)
+            end,
             {finished, OriginalFilePath, OriginalMTime};
         not_modified ->
-            not_modified
+            not_modified;
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 
@@ -106,10 +121,22 @@ write_streamed_data_to_file(RequestId, FilePath) ->
                  ok = file:close(File),
                  {finished, Headers};
              {http, {RequestId, {{_, 304, _}, _Headers, <<>>}}} -> % "Not Modified"
+                 ok = file:close(File),
+                 ok = file:delete(FilePath),
                  not_modified;
+             {http, {RequestId, {error, Reason}}} ->
+                   httpc:cancel_request(RequestId),
+                   ok = file:close(File),
+                   ok = file:delete(FilePath),
+                 {error, Reason};
              Msg ->
                  lager:error("msg: ~p", [Msg]),
                  F()
+         after podrec_util:get_env(http_fetch_timeout, 300000) ->
+                   httpc:cancel_request(RequestId),
+                   ok = file:close(File),
+                   ok = file:delete(FilePath),
+                   {error, {timeout, fetching}}
          end
      end)().
 
