@@ -15,7 +15,7 @@
 
 -record(state, {jobs=#{}}).
 
--record(podrec_feed, {local_name, orig_url, last_fetch}).
+-record(file, {local_name, orig_url, last_fetch}).
 
 -compile(export_all).
 
@@ -24,7 +24,8 @@
 %%%===================================================================
 
 init_feed_table() ->
-    mnesia:create_table(podrec_feed, [{attributes, record_info(fields, podrec_feed)},
+    mnesia:create_table(podrec_feed, [{record_name, file},
+                                      {attributes, record_info(fields, file)},
                                       {disc_copies, [node()]}]),
     ok.
 
@@ -117,10 +118,15 @@ exists_cached_file(Path) ->
 is_cached_file_recent(LocalName) when is_binary(LocalName) ->
     T = fun() -> mnesia:read(podrec_feed, LocalName) end,
     case mnesia:transaction(T) of
-        {atomic, [#podrec_feed{last_fetch=LastFetch}]} ->
+        {atomic, [#file{last_fetch=LastFetch}]} ->
             % TODO: LastFetch might be undefined
-            FeedRecent = podrec_util:get_env(feed_recent, 600),
-            erlang:system_time(seconds) - LastFetch < FeedRecent;
+            case LastFetch of
+                undefined ->
+                    false;
+                _ when is_integer(LastFetch) ->
+                    FeedRecent = podrec_util:get_env(feed_recent, 600),
+                    erlang:system_time(seconds) - LastFetch < FeedRecent
+            end;
         {atomic, []} ->
             false
     end.
@@ -128,7 +134,7 @@ is_cached_file_recent(LocalName) when is_binary(LocalName) ->
 update_feed_recency(LocalName) when is_binary(LocalName) ->
     Now = erlang:system_time(seconds),
     T = fun() -> [Feed] = mnesia:read(podrec_feed, LocalName),
-                 mnesia:write(Feed#podrec_feed{last_fetch=Now})
+                 mnesia:write(podrec_feed, Feed#file{last_fetch=Now}, write)
         end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
@@ -150,20 +156,20 @@ get_feed_original_url(LocalName) when is_binary(LocalName) ->
     T = fun() -> mnesia:read(podrec_feed, LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [Feed]} ->
-            {ok, Feed#podrec_feed.orig_url};
+            {ok, Feed#file.orig_url};
         {atomic, []} ->
             ConfiguredFeeds = podrec_util:get_env(feeds),
             case maps:get(LocalName, ConfiguredFeeds, undefined) of
                 undefined -> {error, unknown_feed};
                 OriginalUrl ->
-                    ok = add_feed_to_db(#podrec_feed{local_name=LocalName, orig_url=OriginalUrl}),
+                    ok = add_feed_to_db(#file{local_name=LocalName, orig_url=OriginalUrl}),
                     {ok, OriginalUrl}
             end
     end.
 
-add_feed_to_db(Feed) when is_record(Feed, podrec_feed) ->
-    lager:info("adding ~p to database", [Feed#podrec_feed.local_name]),
-    {atomic, ok} = mnesia:transaction(fun() -> mnesia:write(Feed) end),
+add_feed_to_db(Feed) when is_record(Feed, file) ->
+    lager:info("adding ~p to database", [Feed#file.local_name]),
+    {atomic, ok} = mnesia:transaction(fun() -> mnesia:write(podrec_feed, Feed, write) end),
     ok.
 
 
