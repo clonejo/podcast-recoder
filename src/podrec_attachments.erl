@@ -1,4 +1,4 @@
--module(podrec_feeds).
+-module(podrec_attachments).
 
 -behaviour(podrec_file_type).
 
@@ -8,8 +8,6 @@
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/1, get_cached_file_path/1,
          file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1]).
-
--include_lib("records.hrl").
 
 %%%===================================================================
 %%% API
@@ -24,6 +22,11 @@ start_link() ->
 get_feed(LocalName) when is_binary(LocalName) ->
     podrec_files:get_feed(LocalName, ?MODULE).
 
+file_fetch_user_timeout() ->
+    podrec_util:get_env(attachment_fetch_user_timeout, 60000).
+file_recent() ->
+    podrec_util:get_env(attachment_recent, 600).
+
 
 %%%===================================================================
 %%% Callbacks
@@ -35,21 +38,9 @@ mnesia_table_name() -> ?MODULE.
 try_recode(OriginalFilePath) ->
     {finished, OriginalFilePath}.
 
-file_fetch_user_timeout() ->
-    podrec_util:get_env(feed_fetch_user_timeout, 60000).
-file_recent() ->
-    podrec_util:get_env(feed_recent, 600).
-
 get_cached_file_path(LocalName) when is_binary(LocalName) ->
-    filename:join([podrec_util:get_env(cached_feeds_path, <<"feeds_cache">>),
+    filename:join([podrec_util:get_env(cached_attachments_path, <<"attachments_cache">>),
                    list_to_binary([LocalName, <<".xml">>])]).
 
-get_file_preconfigured_url(LocalName) when is_binary(LocalName) ->
-            ConfiguredFeeds = podrec_util:get_env(feeds),
-            case maps:get(LocalName, ConfiguredFeeds, undefined) of
-                undefined -> {error, unknown_feed};
-                OriginalUrl ->
-                    ok = podrec_files:add_feed_to_db(#file{local_name=LocalName, orig_url=OriginalUrl},
-                                                     ?MODULE),
-                    {ok, OriginalUrl}
-            end.
+get_file_preconfigured_url(_LocalName) when is_binary(_LocalName) ->
+    {error, unknown_feed}.

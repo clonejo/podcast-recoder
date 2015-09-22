@@ -9,3 +9,5 @@
 -callback file_fetch_user_timeout() -> Milliseconds :: integer().
 
 -callback file_recent() -> Seconds :: integer().
+
+-callback get_file_original_url(LocalName :: binary()) -> {ok, Path :: term()} | {error, Reason :: term()}.

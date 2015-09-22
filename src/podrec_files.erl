@@ -6,7 +6,8 @@
 -export([init_feed_table/1,
          start_link/1,
          get_feed/2,
-         exists_cached_file/1]).
+         exists_cached_file/1,
+         add_feed_to_db/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -18,7 +19,7 @@
 
 -record(state, {jobs=#{}, callback}).
 
--record(file, {local_name, orig_url, last_fetch}).
+-include_lib("records.hrl").
 
 %%%===================================================================
 %%% API
@@ -153,20 +154,20 @@ try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     end.
 
 get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    % TODO: rewrite to also check if orig_url in db and sys.config are
-    %       different, update db if necessary
     T = fun() -> mnesia:read(Callback:mnesia_table_name(), LocalName) end,
     case mnesia:transaction(T) of
-        {atomic, [Feed]} ->
-            {ok, Feed#file.orig_url};
+        {atomic, [#file{orig_url=DbUrl}]} ->
+            case Callback:get_file_preconfigured_url(LocalName) of
+                {ok, DbUrl} -> % url in db and config are the same
+                    {ok, DbUrl};
+                {ok, PreconfiguredUrl} -> % url in db and config differ
+                    ok = add_feed_to_db(#file{local_name=LocalName, orig_url=DbUrl}, Callback),
+                    {ok, PreconfiguredUrl};
+                {error, unknown_feed} ->
+                    {ok, DbUrl}
+            end;
         {atomic, []} ->
-            ConfiguredFeeds = podrec_util:get_env(feeds),
-            case maps:get(LocalName, ConfiguredFeeds, undefined) of
-                undefined -> {error, unknown_feed};
-                OriginalUrl ->
-                    ok = add_feed_to_db(#file{local_name=LocalName, orig_url=OriginalUrl}, Callback),
-                    {ok, OriginalUrl}
-            end
+            Callback:get_file_preconfigured_url(LocalName)
     end.
 
 add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->

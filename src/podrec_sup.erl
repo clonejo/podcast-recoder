@@ -29,7 +29,8 @@ start_link() ->
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
     {ok, {#{strategy => one_for_one},
-          [#{id => podrec_feeds, start => {podrec_feeds, start_link, []}}]}}.
+          [#{id => podrec_feeds, start => {podrec_feeds, start_link, []}},
+           #{id => podrec_attachments, start => {podrec_attachments, start_link, []}}]}}.
 
 %%====================================================================
 %% Internal functions
