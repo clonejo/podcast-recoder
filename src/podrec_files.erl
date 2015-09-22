@@ -22,6 +22,24 @@
 -include_lib("records.hrl").
 
 %%%===================================================================
+%%% Behaviour methods
+%%%===================================================================
+
+-callback mnesia_table_name() -> TableName :: atom().
+
+-callback get_cached_file_path(LocalName :: binary()) -> Path :: term().
+
+-callback try_recode(OriginalFilePath :: term()) ->
+    {finished, RecodedFilePath :: term()} | {error, Reason :: term()}.
+
+-callback file_fetch_user_timeout() -> Milliseconds :: integer().
+
+-callback file_recent() -> Seconds :: integer().
+
+-callback get_file_preconfigured_url(LocalName :: binary()) ->
+    {ok, Path :: term()} | {error, Reason :: term()}.
+
+%%%===================================================================
 %%% API
 %%%===================================================================
 
@@ -204,5 +222,4 @@ remove_job(LocalName, Jobs) ->
 start_job(LocalName, OriginalUrl, Callback) ->
     podrec_feed_worker:start_link(LocalName, OriginalUrl, Callback),
     ok.
-
 

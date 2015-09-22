@@ -1,6 +1,6 @@
 -module(podrec_feeds).
 
--behaviour(podrec_file_type).
+-behaviour(podrec_files).
 
 %% API
 -export([init_feed_table/0, start_link/0, get_feed/1]).
