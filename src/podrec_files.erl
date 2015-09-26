@@ -220,6 +220,6 @@ remove_job(LocalName, Jobs) ->
 
 
 start_job(LocalName, OriginalUrl, Callback) ->
-    podrec_feed_worker:start_link(LocalName, OriginalUrl, Callback),
+    podrec_file_worker:start_link(LocalName, OriginalUrl, Callback),
     ok.
 

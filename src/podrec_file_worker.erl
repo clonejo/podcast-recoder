@@ -1,4 +1,4 @@
--module(podrec_feed_worker).
+-module(podrec_file_worker).
 
 -behaviour(gen_server).
 
