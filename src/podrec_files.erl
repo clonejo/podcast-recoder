@@ -5,7 +5,7 @@
 %% API
 -export([init_feed_table/1,
          start_link/1,
-         get_feed/2,
+         get_file/2,
          exists_cached_file/1,
          add_feed_to_db/2]).
 
@@ -53,7 +53,7 @@ init_feed_table(Callback) when is_atom(Callback) ->
 start_link(Callback) when is_atom(Callback) ->
     gen_server:start_link({local, Callback}, ?MODULE, [Callback], []).
 
-get_feed(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     CachedPath = Callback:get_cached_file_path(LocalName),
     case exists_cached_file(CachedPath) of
         true ->
@@ -79,7 +79,7 @@ get_feed(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
                     lager:info("Req:~p fetch successful", [LocalName]),
                     {ok, CachedPath};
                 {error, Reason} ->
-                    lager:info("Req:~p error on fetching", [LocalName]),
+                    lager:info("Req:~p error on fetching, reason: ~p", [LocalName, Reason]),
                     {error, Reason}
             end
     end.

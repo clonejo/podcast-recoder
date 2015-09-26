@@ -19,11 +19,15 @@
 
 start(_StartType, _StartArgs) ->
     % cowboy init
-    Dispatch = cowboy_router:compile([{'_', [{"/", foo, []}
-                                             %{'_', cowboy_404_handler, []}]}]),
-                                             ]}]),
+    WebsitePath = podrec_util:get_env(website_path, <<"website.html">>),
+    Routes = [{'_', [{"/", cowboy_static, {file, WebsitePath}},
+                     {"/feeds/:name", podrec_http_file_handler, #{callback => podrec_feeds}},
+                     {"/attachments/:name", podrec_http_file_handler, #{callback => podrec_attachments}}
+                    ]}],
+    Dispatch = cowboy_router:compile(Routes),
     {ok, _} = cowboy:start_http(podcast_recoder, podrec_util:get_env(listener_threads, 100),
-                                [{port, podrec_util:get_env(port, 8080)}],
+                                [{port, podrec_util:get_env(port, 8080)},
+                                 {ip, {0,0,0,0,0,0,0,0}}], % enable IPv6
                                 [{env, [{dispatch, Dispatch}]}]),
     podrec_sup:start_link().
 
