@@ -33,7 +33,14 @@ mnesia_table_name() -> ?MODULE.
 
 % TODO: implement
 try_recode(OriginalFilePath) ->
-    {finished, OriginalFilePath}.
+    {RootElem, []} = xmerl_scan:file(OriginalFilePath),
+    RecodedFilePath = podrec_util:generate_temp_filepath(),
+    RecodedXml = xmerl:export_simple([RootElem], xmerl_xml),
+    {ok, F} = file:open(RecodedFilePath, [write, {encoding, utf8}]),
+    ok = io:format(F, "~ts~n", [lists:flatten(RecodedXml)]),
+    ok = file:close(F),
+    ok = file:delete(OriginalFilePath),
+    {finished, RecodedFilePath}.
 
 file_fetch_user_timeout() ->
     podrec_util:get_env(feed_fetch_user_timeout, 60000).
