@@ -49,7 +49,5 @@ get_file_preconfigured_url(LocalName) when is_binary(LocalName) ->
             case maps:get(LocalName, ConfiguredFeeds, undefined) of
                 undefined -> {error, unknown_feed};
                 OriginalUrl ->
-                    ok = podrec_files:add_feed_to_db(#file{local_name=LocalName, orig_url=OriginalUrl},
-                                                     ?MODULE),
                     {ok, OriginalUrl}
             end.

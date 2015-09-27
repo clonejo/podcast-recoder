@@ -185,7 +185,14 @@ get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
                     {ok, DbUrl}
             end;
         {atomic, []} ->
-            Callback:get_file_preconfigured_url(LocalName)
+            case Callback:get_file_preconfigured_url(LocalName) of
+                {ok, PreconfiguredUrl} ->
+                    ok = podrec_files:add_feed_to_db(#file{local_name=LocalName, orig_url=PreconfiguredUrl},
+                                                     Callback),
+                    {ok, PreconfiguredUrl};
+                {error, unknown_feed} ->
+                    {error, unknown_feed}
+            end
     end.
 
 add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
