@@ -181,7 +181,7 @@ get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
                 {ok, PreconfiguredUrl} -> % url in db and config differ
                     ok = add_feed_to_db(#file{local_name=LocalName, orig_url=DbUrl}, Callback),
                     {ok, PreconfiguredUrl};
-                {error, unknown_feed} ->
+                {error, unknown_file} ->
                     {ok, DbUrl}
             end;
         {atomic, []} ->

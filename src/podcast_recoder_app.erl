@@ -45,6 +45,7 @@ initdb() ->
     ok = mnesia:create_schema([node()]),
     ok = mnesia:start(),
     ok = podrec_feeds:init_feed_table(),
+    ok = podrec_attachments:init_feed_table(),
     stopped = mnesia:stop(),
     io:format("Finished setting up db.~n"),
     ok.
