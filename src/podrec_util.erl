@@ -4,7 +4,8 @@
          generate_temp_filepath/0,
          move_file/2,
          get_file_mtime/1,
-         set_file_mtime/2]).
+         set_file_mtime/2,
+         kill_port_os_process/2]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -38,3 +39,24 @@ set_file_mtime(MTime, Path) ->
     {ok, FileInfo} = file:read_file_info(Path, [{time, posix}]),
     NewFileInfo = FileInfo#file_info{mtime=MTime},
     ok = file:write_file_info(Path, NewFileInfo, [{time, posix}]).
+
+kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
+    {os_pid, OsPid} = erlang:port_info(Port, os_pid),
+    "" = os:cmd(io_lib:format("kill -15 ~B", [OsPid])),
+    receive
+        {'EXIT', Port, normal} ->
+            ok;
+        Msg ->
+            lager:info("unknown message after kill -15: ~p", [Msg]),
+            exit(kill)
+    after KillTimeout ->
+        "" = os:cmd(io_lib:format("kill -9 ~B", [OsPid])),
+        receive
+            {'EXIT', Port, normal} ->
+                ok;
+            Msg ->
+                lager:info("unknown message after kill -9: ~p", [Msg]),
+                exit(kill)
+        end
+    end.
+

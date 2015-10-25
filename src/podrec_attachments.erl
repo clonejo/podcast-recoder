@@ -61,7 +61,7 @@ try_recode(OriginalFilePath) ->
                     lager:info("ffmpeg: ~p", [Msg]),
                     F()
             after Timeout ->
-                % TODO: kill ffmpeg, otherwise it will keep running and consume ressources
+                ok = podrec_util:kill_port_os_process(Port, 0),
                 ok = file:delete(OriginalFilePath),
                 ok = file:delete(RecodedFilePath),
                 {error, recoding_timeout}
