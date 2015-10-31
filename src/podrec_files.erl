@@ -136,7 +136,6 @@ is_cached_file_recent(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
     T = fun() -> mnesia:read(Callback:mnesia_table_name(), LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [#file{last_fetch=LastFetch}]} ->
-            % TODO: LastFetch might be undefined
             case LastFetch of
                 undefined ->
                     false;
