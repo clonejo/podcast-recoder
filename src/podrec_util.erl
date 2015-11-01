@@ -42,21 +42,26 @@ set_file_mtime(MTime, Path) ->
 
 kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
     {os_pid, OsPid} = erlang:port_info(Port, os_pid),
-    "" = os:cmd(io_lib:format("kill -15 ~B", [OsPid])),
-    receive
-        {'EXIT', Port, normal} ->
-            ok;
+    case os:cmd(io_lib:format("kill -15 ~B", [OsPid])) of
+        "" ->
+            receive
+                {'EXIT', Port, normal} ->
+                    ok;
+                {'EXIT', Port, _} = Msg ->
+                    lager:info("unknown message after kill -15: ~p", [Msg]),
+                    exit(kill)
+            after KillTimeout ->
+                      "" = os:cmd(io_lib:format("kill -9 ~B", [OsPid])),
+                      receive
+                          {'EXIT', Port, normal} ->
+                              ok;
+                          {'EXIT', Port, _} = Msg ->
+                              lager:info("unknown message after kill -9: ~p", [Msg]),
+                              exit(kill)
+                      end
+            end;
         Msg ->
-            lager:info("unknown message after kill -15: ~p", [Msg]),
-            exit(kill)
-    after KillTimeout ->
-        "" = os:cmd(io_lib:format("kill -9 ~B", [OsPid])),
-        receive
-            {'EXIT', Port, normal} ->
-                ok;
-            Msg ->
-                lager:info("unknown message after kill -9: ~p", [Msg]),
-                exit(kill)
-        end
+            lager:error("something went wrong when killing (~B): ~p", [OsPid, Msg]),
+            {error, killing}
     end.
 
