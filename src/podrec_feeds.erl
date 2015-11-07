@@ -68,7 +68,6 @@ recode_xml(#xmlElement{name=item, parents=[{channel, _}, {rss, _}], content=Cont
 recode_xml(#xmlElement{name=enclosure, parents=[{item, _}, {channel, _}, {rss, _}],
                        content=Content, attributes=Attributes}=Elem) ->
     {value, #xmlAttribute{value=Url}=UrlAttr} = lists:keysearch(url, 2, Attributes),
-    lager:info("url=~p", [Url]),
     LocalName = convert_to_local_name(Url),
     ok = podrec_attachments:add_attachment_to_db(LocalName, list_to_binary(Url)),
     NewUrl = podrec_attachments:get_file_url(LocalName),

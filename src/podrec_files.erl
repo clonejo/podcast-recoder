@@ -87,6 +87,12 @@ get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
             end
     end.
 
+add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
+    lager:info("adding ~p to database", [Feed#file.orig_url]),
+    T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
+    {atomic, ok} = mnesia:transaction(T),
+    ok.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -211,12 +217,6 @@ get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
                     {error, unknown_feed}
             end
     end.
-
-add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
-    lager:info("adding ~p to database", [Feed#file.local_name]),
-    T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
-    {atomic, ok} = mnesia:transaction(T),
-    ok.
 
 max_workers_running(JobsRunning) ->
     MaxWorkers = podrec_util:get_env(max_workers, 2),
