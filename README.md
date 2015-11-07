@@ -7,10 +7,14 @@ This application is still in development. When deemed stable enough, I'll provid
 
 `$ rebar3 release`
 
-Dev Setup
-=========
+Development
+===========
+
+An overview of the code can be found in `DESIGN.md`.
+
+Dev Setup:
  * Install [rebar3](https://www.rebar3.org/).
- * Have Erlang installed (v17 should suffice, this app uses maps).
+ * Have Erlang installed (at least v17).
  * `$ run-dev.sh`
    * This will fetch all deps, compile, and run podcast_recoder. [Sync](https://github.com/rustyio/sync) will also be started.
 
