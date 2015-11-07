@@ -17,7 +17,10 @@
          terminate/2,
          code_change/3]).
 
--record(state, {jobs=#{}, callback}).
+-record(state, {jobs=#{},
+                jobs_running=0,
+                queue=queue:new(),
+                callback}).
 
 -include_lib("records.hrl").
 
@@ -95,12 +98,26 @@ init([Callback]) when is_atom(Callback) ->
 handle_call({try_fetch, LocalName, OriginalUrl}, From, #state{jobs=Jobs, callback=Callback}=State) ->
     NewState = case get_job_entry(LocalName, State#state.jobs) of
                    Job when is_map(Job) ->
+                       % we already have a job for this file
                        NewJob = add_notified_client_to_job(From, Job),
                        State#state{jobs=update_job(LocalName, NewJob, Jobs)};
                    undefined ->
-                       ok = start_job(LocalName, OriginalUrl, Callback),
+                       % no job exists, add it
+                       U = case max_workers_running(State#state.jobs_running) of
+                               true ->
+                                   {queue:in({LocalName, OriginalUrl}, State#state.queue),
+                                    State#state.jobs_running};
+                               false ->
+                                   ok = start_job(LocalName, OriginalUrl, Callback),
+                                   {State#state.queue, State#state.jobs_running + 1}
+                           end,
+                       {NewQueue, NewJobsRunning} = U,
+                       lager:info("running: ~p, queue: ~p", [NewJobsRunning,
+                                                             queue:to_list(NewQueue)]),
                        JobEntry = add_notified_client_to_job(From, new_job_entry()),
-                       State#state{jobs=add_job_entry(LocalName, JobEntry, Jobs)}
+                       State#state{jobs=add_job_entry(LocalName, JobEntry, Jobs),
+                                   jobs_running=NewJobsRunning,
+                                   queue=NewQueue}
                end,
     {noreply, NewState}.
 
@@ -114,7 +131,8 @@ handle_cast({worker_terminated, LocalName, Msg}, #state{callback=Callback}=State
     #{notify_clients := Clients} = get_job_entry(LocalName, State#state.jobs),
     lists:foreach(fun(Client) ->
                           gen_server:reply(Client, Msg) end, Clients),
-    {noreply, State#state{jobs=remove_job(LocalName, State#state.jobs)}}.
+    NewState = State#state{jobs=remove_job(LocalName, State#state.jobs)},
+    {noreply, process_queue(NewState)}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -199,6 +217,21 @@ add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
     T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
+
+max_workers_running(JobsRunning) ->
+    MaxWorkers = podrec_util:get_env(max_workers, 2),
+    JobsRunning >= MaxWorkers.
+
+process_queue(#state{jobs_running=JobsRunning, queue=Queue, callback=Callback} = State) ->
+    case queue:out(Queue) of
+        {empty, _} ->
+            lager:info("running: ~p, queue: ~p", [JobsRunning-1, queue:to_list(Queue)]),
+            State#state{jobs_running = JobsRunning - 1};
+        {{value, {LocalName, OriginalUrl}}, NewQueue} ->
+            lager:info("running: ~p, queue: ~p", [JobsRunning, queue:to_list(NewQueue)]),
+            ok = start_job(LocalName, OriginalUrl, Callback),
+            State#state{queue=NewQueue}
+    end.
 
 
 % job entry functions
