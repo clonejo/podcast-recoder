@@ -5,7 +5,8 @@
          move_file/2,
          get_file_mtime/1,
          set_file_mtime/2,
-         kill_port_os_process/2]).
+         kill_port_os_process/2,
+         bin_to_hex/1]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -65,3 +66,5 @@ kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
             {error, killing}
     end.
 
+bin_to_hex(Bin) when is_binary(Bin) ->
+    list_to_binary([io_lib:format("~2.16.0B", [B]) || <<B:8>> <= Bin]).

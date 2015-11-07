@@ -97,11 +97,5 @@ get_file_preconfigured_url(LocalName) when is_binary(LocalName) ->
 
 % TODO: normalize, command injection!
 convert_to_local_name(Url) ->
-    Filename = lists:last(string:tokens(Url, "/")),
-    list_to_binary([case string:rchr(Filename, $.) of
-                        0 ->
-                            Filename;
-                        Pos ->
-                            string:sub_string(Filename, 1, Pos-1)
-                    end, <<".opus">>]).
+    list_to_binary([podrec_util:bin_to_hex(crypto:hash(sha256, Url)), <<".opus">>]).
 
