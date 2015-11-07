@@ -119,7 +119,7 @@ handle_call({try_fetch, LocalName, OriginalUrl}, From, #state{jobs=Jobs, callbac
                            end,
                        {NewQueue, NewJobsRunning} = U,
                        lager:info("running: ~p, queue: ~p", [NewJobsRunning,
-                                                             queue:to_list(NewQueue)]),
+                                                             queue:len(NewQueue)]),
                        JobEntry = add_notified_client_to_job(From, new_job_entry()),
                        State#state{jobs=add_job_entry(LocalName, JobEntry, Jobs),
                                    jobs_running=NewJobsRunning,
@@ -225,10 +225,10 @@ max_workers_running(JobsRunning) ->
 process_queue(#state{jobs_running=JobsRunning, queue=Queue, callback=Callback} = State) ->
     case queue:out(Queue) of
         {empty, _} ->
-            lager:info("running: ~p, queue: ~p", [JobsRunning-1, queue:to_list(Queue)]),
+            lager:info("running: ~p, queue: ~p", [JobsRunning-1, queue:len(Queue)]),
             State#state{jobs_running = JobsRunning - 1};
         {{value, {LocalName, OriginalUrl}}, NewQueue} ->
-            lager:info("running: ~p, queue: ~p", [JobsRunning, queue:to_list(NewQueue)]),
+            lager:info("running: ~p, queue: ~p", [JobsRunning, queue:len(NewQueue)]),
             ok = start_job(LocalName, OriginalUrl, Callback),
             State#state{queue=NewQueue}
     end.
