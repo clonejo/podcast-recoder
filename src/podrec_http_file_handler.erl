@@ -19,7 +19,7 @@ handle(Req, #state{callback=Callback}=State) ->
             Req3 = cowboy_req:set_resp_body_fun(FileSize, F, Req2),
             {ok, Req4} = cowboy_req:reply(200, [], Req3),
             {ok, Req4, State};
-        {error, unknown_feed} ->
+        {error, unknown_file} ->
             {ok, Req3} = cowboy_req:reply(404, [], <<"Unknown file\n">>, Req2),
             {ok, Req3, State}
     end.
