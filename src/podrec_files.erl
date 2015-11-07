@@ -7,7 +7,9 @@
          start_link/1,
          get_file/2,
          exists_cached_file/1,
-         add_feed_to_db/2]).
+         add_feed_to_db/2,
+         update_feed_recency/2,
+         update_last_requested/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -58,38 +60,61 @@ start_link(Callback) when is_atom(Callback) ->
 
 get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     CachedPath = Callback:get_cached_file_path(LocalName),
-    case exists_cached_file(CachedPath) of
-        true ->
-            case is_cached_file_recent(LocalName, Callback) of
-                true ->
-                    lager:info("Req:~p cache is recent", [LocalName]),
-                    {ok, CachedPath};
-                false ->
-                    lager:info("Req:~p cache is not recent, trying to fetch ...", [LocalName]),
-                    case try_fetch(LocalName, Callback) of
-                        {ok, CachedPath} ->
-                            lager:info("Req:~p fetch successful", [LocalName]),
-                            {ok, CachedPath};
-                        {error, Reason} ->
-                            lager:info("Req:~p error on fetching, serving older version (error: ~p)", [LocalName, Reason]),
-                            {ok, CachedPath} % just serve older version :P
-                    end
-            end;
-        false ->
-            lager:info("Req:~p not in cache, trying to fetch ...", [LocalName]),
-            case try_fetch(LocalName, Callback) of
-                {ok, CachedPath} ->
-                    lager:info("Req:~p fetch successful", [LocalName]),
-                    {ok, CachedPath};
-                {error, Reason} ->
-                    lager:info("Req:~p error on fetching, reason: ~p", [LocalName, Reason]),
-                    {error, Reason}
-            end
-    end.
+    R = case exists_cached_file(CachedPath) of
+            true ->
+                case is_cached_file_recent(LocalName, Callback) of
+                    true ->
+                        lager:info("Req:~p cache is recent", [LocalName]),
+                        {ok, CachedPath};
+                    false ->
+                        lager:info("Req:~p cache is not recent, trying to fetch ...", [LocalName]),
+                        case try_fetch(LocalName, Callback) of
+                            {ok, CachedPath} ->
+                                lager:info("Req:~p fetch successful", [LocalName]),
+                                {ok, CachedPath};
+                            {error, Reason} ->
+                                lager:info("Req:~p error on fetching, serving older version (error: ~p)", [LocalName, Reason]),
+                                {ok, CachedPath} % just serve older version :P
+                        end
+                end;
+            false ->
+                lager:info("Req:~p not in cache, trying to fetch ...", [LocalName]),
+                case try_fetch(LocalName, Callback) of
+                    {ok, CachedPath} ->
+                        lager:info("Req:~p fetch successful", [LocalName]),
+                        {ok, CachedPath};
+                    {error, Reason} ->
+                        lager:info("Req:~p error on fetching, reason: ~p", [LocalName, Reason]),
+                        {error, Reason}
+                end
+        end,
+    case R of
+        {ok, _CachedPath} ->
+            update_last_requested(LocalName, Callback);
+        {error, _Reason} ->
+            ok
+    end,
+    R.
 
 add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
     lager:info("adding ~p to database", [Feed#file.orig_url]),
     T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
+    {atomic, ok} = mnesia:transaction(T),
+    ok.
+
+update_feed_recency(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    Now = erlang:system_time(seconds),
+    T = fun() -> [Feed] = mnesia:read(Callback:mnesia_table_name(), LocalName),
+                 mnesia:write(Callback:mnesia_table_name(), Feed#file{last_fetch=Now}, write)
+        end,
+    {atomic, ok} = mnesia:transaction(T),
+    ok.
+
+update_last_requested(LocalName,Callback) when is_binary(LocalName), is_atom(Callback) ->
+    Now = erlang:system_time(seconds),
+    T = fun() -> [Feed] = mnesia:read(Callback:mnesia_table_name(), LocalName),
+                 mnesia:write(Callback:mnesia_table_name(), Feed#file{last_requested=Now}, write)
+        end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
 
@@ -128,12 +153,6 @@ handle_call({try_fetch, LocalName, OriginalUrl}, From, #state{jobs=Jobs, callbac
     {noreply, NewState}.
 
 handle_cast({worker_terminated, LocalName, Msg}, #state{callback=Callback}=State) ->
-    case Msg of
-        {ok, _} ->
-            ok = update_feed_recency(LocalName, Callback);
-        {error, _Reason} ->
-            ok
-    end,
     #{notify_clients := Clients} = get_job_entry(LocalName, State#state.jobs),
     lists:foreach(fun(Client) ->
                           gen_server:reply(Client, Msg) end, Clients),
@@ -171,13 +190,6 @@ is_cached_file_recent(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
             false
     end.
 
-update_feed_recency(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    Now = erlang:system_time(seconds),
-    T = fun() -> [Feed] = mnesia:read(Callback:mnesia_table_name(), LocalName),
-                 mnesia:write(Callback:mnesia_table_name(), Feed#file{last_fetch=Now}, write)
-        end,
-    {atomic, ok} = mnesia:transaction(T),
-    ok.
 
 try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     case get_feed_original_url(LocalName, Callback) of

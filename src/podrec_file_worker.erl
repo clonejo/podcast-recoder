@@ -48,6 +48,13 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName, callback=Call
                             {finished, RecodedFilePath} ->
                                 ok = podrec_util:move_file(RecodedFilePath, CachedPath),
                                 ok = podrec_util:set_file_mtime(OriginalMTime, CachedPath),
+
+                                ok = podrec_files:update_last_requested(LocalName, Callback),
+                                % so it won't be garbage collected immediately
+
+                                ok = podrec_files:update_feed_recency(LocalName, Callback),
+                                % from now on file might be garbage collected
+
                                 {ok, CachedPath};
                             {error, Reason} ->
                                 {error, Reason}
