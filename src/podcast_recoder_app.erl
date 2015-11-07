@@ -18,6 +18,9 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
+    % delete leftover files from last run
+    TempDir = podrec_util:get_env(temp_dir, <<"/tmp/podcast_recoder">>),
+    ok = ec_file:remove(TempDir, [recursive]),
     % cowboy init
     WebsitePath = podrec_util:get_env(website_path, <<"website.html">>),
     Routes = [{'_', [{"/", cowboy_static, {file, WebsitePath}},
