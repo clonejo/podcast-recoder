@@ -3,12 +3,12 @@
 -behaviour(gen_server).
 %%
 %% API
--export([init_feed_table/1,
+-export([init_file_table/1,
          start_link/1,
          get_file/2,
          exists_cached_file/1,
-         add_feed_to_db/2,
-         update_feed_recency/2,
+         add_file_to_db/2,
+         update_last_fetch/2,
          update_last_requested/2]).
 
 %% gen_server callbacks
@@ -48,7 +48,7 @@
 %%% API
 %%%===================================================================
 
-init_feed_table(Callback) when is_atom(Callback) ->
+init_file_table(Callback) when is_atom(Callback) ->
     mnesia:create_table(Callback:mnesia_table_name(),
                         [{record_name, file},
                          {attributes, record_info(fields, file)},
@@ -96,13 +96,13 @@ get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     end,
     R.
 
-add_feed_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
+add_file_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
     lager:info("adding ~p to database", [Feed#file.orig_url]),
     T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
 
-update_feed_recency(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+update_last_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     Now = erlang:system_time(seconds),
     T = fun() -> [Feed] = mnesia:read(Callback:mnesia_table_name(), LocalName),
                  mnesia:write(Callback:mnesia_table_name(), Feed#file{last_fetch=Now}, write)
@@ -152,7 +152,7 @@ handle_call({try_fetch, LocalName, OriginalUrl}, From, #state{jobs=Jobs, callbac
                end,
     {noreply, NewState}.
 
-handle_cast({worker_terminated, LocalName, Msg}, #state{callback=Callback}=State) ->
+handle_cast({worker_terminated, LocalName, Msg}, State) ->
     #{notify_clients := Clients} = get_job_entry(LocalName, State#state.jobs),
     lists:foreach(fun(Client) ->
                           gen_server:reply(Client, Msg) end, Clients),
@@ -192,7 +192,7 @@ is_cached_file_recent(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
 
 
 try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    case get_feed_original_url(LocalName, Callback) of
+    case get_file_original_url(LocalName, Callback) of
         {ok, OriginalUrl} ->
             Timeout = Callback:file_fetch_user_timeout(),
             % though we time out after a while, the job might still continue,
@@ -206,7 +206,7 @@ try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
             {error, Reason}
     end.
 
-get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+get_file_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     T = fun() -> mnesia:read(Callback:mnesia_table_name(), LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [#file{orig_url=DbUrl}]} ->
@@ -214,7 +214,7 @@ get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
                 {ok, DbUrl} -> % url in db and config are the same
                     {ok, DbUrl};
                 {ok, PreconfiguredUrl} -> % url in db and config differ
-                    ok = add_feed_to_db(#file{local_name=LocalName, orig_url=DbUrl}, Callback),
+                    ok = add_file_to_db(#file{local_name=LocalName, orig_url=DbUrl}, Callback),
                     {ok, PreconfiguredUrl};
                 {error, unknown_file} ->
                     {ok, DbUrl}
@@ -222,7 +222,7 @@ get_feed_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
         {atomic, []} ->
             case Callback:get_file_preconfigured_url(LocalName) of
                 {ok, PreconfiguredUrl} ->
-                    ok = podrec_files:add_feed_to_db(#file{local_name=LocalName, orig_url=PreconfiguredUrl},
+                    ok = podrec_files:add_file_to_db(#file{local_name=LocalName, orig_url=PreconfiguredUrl},
                                                      Callback),
                     {ok, PreconfiguredUrl};
                 {error, unknown_file} ->

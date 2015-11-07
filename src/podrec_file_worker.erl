@@ -52,7 +52,7 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName, callback=Call
                                 ok = podrec_files:update_last_requested(LocalName, Callback),
                                 % so it won't be garbage collected immediately
 
-                                ok = podrec_files:update_feed_recency(LocalName, Callback),
+                                ok = podrec_files:update_last_fetch(LocalName, Callback),
                                 % from now on file might be garbage collected
 
                                 {ok, CachedPath};

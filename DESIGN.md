@@ -40,7 +40,6 @@ Todo
    - add LICENSE
    - http_file_handler: honour if-not-modified
    - http_file_handler: use gzip compression
-   - replace 'feed' with 'file' when applicable
  - required for publicly hosting non-CC podcasts:
    - regularly request orig url for each feed/attachment. delete cached version
      if 404.

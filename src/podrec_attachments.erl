@@ -3,7 +3,7 @@
 -behaviour(podrec_files).
 
 %% API
--export([init_feed_table/0, start_link/0, get_feed/1, get_file_url/1,
+-export([init_file_table/0, start_link/0, get_file/1, get_file_url/1,
          add_attachment_to_db/2]).
 
 %% Callbacks
@@ -16,21 +16,21 @@
 %%% API
 %%%===================================================================
 
-init_feed_table() ->
-    podrec_files:init_feed_table(?MODULE).
+init_file_table() ->
+    podrec_files:init_file_table(?MODULE).
 
 start_link() ->
     podrec_files:start_link(?MODULE).
 
-get_feed(LocalName) when is_binary(LocalName) ->
-    podrec_files:get_feed(LocalName, ?MODULE).
+get_file(LocalName) when is_binary(LocalName) ->
+    podrec_files:get_file(LocalName, ?MODULE).
 
 get_file_url(LocalName) when is_binary(LocalName) ->
     BaseUrl = podrec_util:get_env(base_url),
     [BaseUrl, <<"attachments/">>, LocalName].
 
 add_attachment_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
-    ok = podrec_files:add_feed_to_db(#file{local_name=LocalName, orig_url=Url}, ?MODULE).
+    ok = podrec_files:add_file_to_db(#file{local_name=LocalName, orig_url=Url}, ?MODULE).
 
 
 %%%===================================================================

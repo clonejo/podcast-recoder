@@ -3,7 +3,7 @@
 -behaviour(podrec_files).
 
 %% API
--export([init_feed_table/0, start_link/0, get_feed/1]).
+-export([init_file_table/0, start_link/0, get_file/1]).
 
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/1, get_cached_file_path/1,
@@ -16,14 +16,14 @@
 %%% API
 %%%===================================================================
 
-init_feed_table() ->
-    podrec_files:init_feed_table(?MODULE).
+init_file_table() ->
+    podrec_files:init_file_table(?MODULE).
 
 start_link() ->
     podrec_files:start_link(?MODULE).
 
-get_feed(LocalName) when is_binary(LocalName) ->
-    podrec_files:get_feed(LocalName, ?MODULE).
+get_file(LocalName) when is_binary(LocalName) ->
+    podrec_files:get_file(LocalName, ?MODULE).
 
 
 %%%===================================================================
