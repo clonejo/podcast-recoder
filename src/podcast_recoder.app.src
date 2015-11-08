@@ -1,3 +1,6 @@
+% Copyright 2015 Feiko Nanninga
+% This file is part of podcast_recoder, a project licensed under the terms of
+% the GNU Affero General Public License Version 3 (see LICENSE).
 {application, 'podcast_recoder',
  [{description, "A proxy which recodes podcasts to low-bitrate opus to save bandwidth. (allows for acceptable voice quality at 24kbit/s (that's ~10MB/h!), but your client has to support opus.)"},
   {vsn, "0.1.0"},

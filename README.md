@@ -23,8 +23,19 @@ Dev Setup:
    * This will fetch all deps, compile, and run podcast_recoder.
      [Sync](https://github.com/rustyio/sync) will also be started.
 
-FAQ
-===
+License (AGPL)
+==============
+Copyright 2015 Feiko Nanninga
 
-_My feed doesn't work!_  
-Yes, the XML parsing could be done better.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.

@@ -37,7 +37,6 @@ Todo
 (in order of importance)
  - required for first release:
    - delete old cached files adhering to a quota
-   - add LICENSE
    - http_file_handler: honour if-not-modified
    - http_file_handler: use gzip compression
  - required for publicly hosting non-CC podcasts:

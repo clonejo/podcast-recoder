@@ -1,4 +1,7 @@
 -module(podrec_http_file_handler).
+% Copyright 2015 Feiko Nanninga
+% This file is part of podcast_recoder, a project licensed under the terms of
+% the GNU Affero General Public License Version 3 (see LICENSE).
 
 % cowboy callbacks
 -export([init/3, handle/2, terminate/3]).
