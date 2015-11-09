@@ -4,6 +4,7 @@
 % the GNU Affero General Public License Version 3 (see LICENSE).
 
 -export([get_env/1, get_env/2,
+         set_env/2,
          generate_temp_filepath/0,
          move_file/2,
          get_file_mtime/1,
@@ -21,6 +22,9 @@ get_env(Key, Default) ->
         undefined -> Default;
         {ok, Value} -> Value
     end.
+
+set_env(Key, Value) when is_atom(Key) ->
+    ok = application:set_env(podcast_recoder, Key, Value).
 
 generate_temp_filepath() ->
     TempDir = podrec_util:get_env(temp_dir, <<"/tmp/podcast_recoder">>),
