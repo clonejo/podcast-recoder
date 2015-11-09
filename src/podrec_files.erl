@@ -10,7 +10,7 @@
          start_link/1,
          get_file/2,
          exists_cached_file/1,
-         add_file_to_db/2,
+         update_orig_url/3,
          update_last_fetch/2,
          update_last_requested/2]).
 
@@ -99,9 +99,14 @@ get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     end,
     R.
 
-add_file_to_db(Feed, Callback) when is_record(Feed, file), is_atom(Callback) ->
-    lager:info("adding ~p to database", [Feed#file.orig_url]),
-    T = fun() -> mnesia:write(Callback:mnesia_table_name(), Feed, write) end,
+%% @doc Updates a file's orig_url in the database. Creates entry if necessary.
+update_orig_url(LocalName, Url, Callback) when is_binary(LocalName), is_binary(Url), is_atom(Callback) ->
+    lager:info("adding ~p to database", [Url]),
+    T = fun() -> File = case mnesia:read(Callback:mnesia_table_name(), LocalName) of
+                            [F] -> F;
+                            [] -> #file{local_name=LocalName}
+                        end,
+                 mnesia:write(Callback:mnesia_table_name(), File#file{orig_url=Url}, write) end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
 
@@ -217,7 +222,7 @@ get_file_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
                 {ok, DbUrl} -> % url in db and config are the same
                     {ok, DbUrl};
                 {ok, PreconfiguredUrl} -> % url in db and config differ
-                    ok = add_file_to_db(#file{local_name=LocalName, orig_url=DbUrl}, Callback),
+                    ok = update_orig_url(LocalName, DbUrl, Callback),
                     {ok, PreconfiguredUrl};
                 {error, unknown_file} ->
                     {ok, DbUrl}
@@ -225,8 +230,7 @@ get_file_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Ca
         {atomic, []} ->
             case Callback:get_file_preconfigured_url(LocalName) of
                 {ok, PreconfiguredUrl} ->
-                    ok = podrec_files:add_file_to_db(#file{local_name=LocalName, orig_url=PreconfiguredUrl},
-                                                     Callback),
+                    ok = update_orig_url(LocalName, PreconfiguredUrl, Callback),
                     {ok, PreconfiguredUrl};
                 {error, unknown_file} ->
                     {error, unknown_file}

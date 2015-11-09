@@ -33,7 +33,7 @@ get_file_url(LocalName) when is_binary(LocalName) ->
     [BaseUrl, <<"attachments/">>, LocalName].
 
 add_attachment_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
-    ok = podrec_files:add_file_to_db(#file{local_name=LocalName, orig_url=Url}, ?MODULE).
+    ok = podrec_files:update_orig_url(LocalName, Url, ?MODULE).
 
 
 %%%===================================================================
