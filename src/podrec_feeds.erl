@@ -37,8 +37,7 @@ mnesia_table_name() -> ?MODULE.
 
 % TODO: implement
 try_recode(OriginalFilePath) ->
-    {OriginalXml, Tail} = xmerl_scan:file(OriginalFilePath),
-    lager:info("Tail=~p", [Tail]),
+    {OriginalXml, _} = xmerl_scan:file(OriginalFilePath),
     RecodedXml = recode_xml(OriginalXml),
     RecodedXmlString = xmerl:export_simple([RecodedXml], xmerl_xml),
     RecodedFilePath = podrec_util:generate_temp_filepath(),
