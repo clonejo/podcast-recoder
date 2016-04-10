@@ -46,19 +46,15 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName, callback=Call
                     not_modified ->
                         lager:info("Req:~p request successful, not modified", [LocalName]),
                         {ok, CachedPath};
-                    {finished, OriginalFilePath, OriginalMTime} ->
-                        case Callback:try_recode(OriginalFilePath) of
-                            {finished, RecodedFilePath} ->
-                                ok = podrec_util:move_file(RecodedFilePath, CachedPath),
-                                ok = podrec_util:set_file_mtime(OriginalMTime, CachedPath),
-
-                                ok = podrec_files:update_last_requested(LocalName, Callback),
-                                % so it won't be garbage collected immediately
-
-                                ok = podrec_files:update_last_fetch(LocalName, Callback),
-                                % from now on file might be garbage collected
-
-                                {ok, CachedPath};
+                    {finished, OriginalFilePath, OriginalMTime, FetchTime} ->
+                        RecodedFilePath = podrec_storage:create_temp_filename(LocalName, Callback),
+                        case Callback:try_recode(OriginalFilePath, RecodedFilePath) of
+                            finished ->
+                                {ok, podrec_storage:update_file(LocalName,
+                                                                RecodedFilePath,
+                                                                OriginalMTime,
+                                                                FetchTime,
+                                                                Callback)};
                             {error, Reason} ->
                                 {error, Reason}
                         end;
@@ -95,6 +91,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                   end ++ [{"accept-encoding", "gzip"}],
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],
                              [{sync, false}, {stream, self}]),
+    FetchTime = erlang:system_time(seconds),
     OriginalFilePath = podrec_util:generate_temp_filepath(),
     case write_streamed_data_to_file(RequestId, OriginalFilePath) of
         {finished, Headers} ->
@@ -114,7 +111,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                     Decompressed = zlib:gunzip(Compressed),
                     ok = file:write_file(OriginalFilePath, Decompressed)
             end,
-            {finished, OriginalFilePath, OriginalMTime};
+            {finished, OriginalFilePath, OriginalMTime, FetchTime};
         not_modified ->
             not_modified;
         {error, Reason} ->

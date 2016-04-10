@@ -6,11 +6,11 @@
 -behaviour(podrec_files).
 
 %% API
--export([init_file_table/0, start_link/0, get_file/1, get_file_url/1,
-         add_attachment_to_db/2]).
+-export([init_file_table/0, start_link/0, start_link_storage/0, get_file/1, get_file_url/1,
+         get_storage_gen_server_name/0, add_attachment_to_db/2]).
 
 %% Callbacks
--export([mnesia_table_name/0, try_recode/1, get_cached_file_path/1,
+-export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
          file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1]).
 
 -include_lib("records.hrl").
@@ -25,6 +25,9 @@ init_file_table() ->
 start_link() ->
     podrec_files:start_link(?MODULE).
 
+start_link_storage() ->
+    podrec_storage:start_link(?MODULE).
+
 get_file(LocalName) when is_binary(LocalName) ->
     podrec_files:get_file(LocalName, ?MODULE).
 
@@ -35,6 +38,8 @@ get_file_url(LocalName) when is_binary(LocalName) ->
 add_attachment_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
     ok = podrec_files:update_orig_url(LocalName, Url, ?MODULE).
 
+get_storage_gen_server_name() -> podrec_attachments_storage.
+
 
 %%%===================================================================
 %%% Callbacks
@@ -43,9 +48,8 @@ add_attachment_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) -
 mnesia_table_name() -> ?MODULE.
 
 % TODO: implement
-try_recode(OriginalFilePath) ->
+try_recode(OriginalFilePath, RecodedFilePath) ->
     lager:info("recoding ..."),
-    RecodedFilePath = podrec_util:generate_temp_filepath(),
     FfmpegPath = podrec_util:get_env(ffmpeg_path, <<"/usr/bin/ffmpeg">>),
     Port = open_port({spawn_executable, FfmpegPath},
                      [{args, [<<"-loglevel">>, <<"error">>,
@@ -59,7 +63,7 @@ try_recode(OriginalFilePath) ->
             receive
                 {'EXIT', Port, normal} ->
                     ok = file:delete(OriginalFilePath),
-                    {finished, RecodedFilePath};
+                    finished;
                 Msg ->
                     lager:info("ffmpeg: ~p", [Msg]),
                     F()

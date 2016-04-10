@@ -6,10 +6,11 @@
 -behaviour(podrec_files).
 
 %% API
--export([init_file_table/0, start_link/0, get_file/1]).
+-export([init_file_table/0, start_link/0, start_link_storage/0, get_file/1,
+         get_storage_gen_server_name/0]).
 
 %% Callbacks
--export([mnesia_table_name/0, try_recode/1, get_cached_file_path/1,
+-export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
          file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1]).
 
 -include_lib("records.hrl").
@@ -25,8 +26,13 @@ init_file_table() ->
 start_link() ->
     podrec_files:start_link(?MODULE).
 
+start_link_storage() ->
+    podrec_storage:start_link(?MODULE).
+
 get_file(LocalName) when is_binary(LocalName) ->
     podrec_files:get_file(LocalName, ?MODULE).
+
+get_storage_gen_server_name() -> podrec_feeds_storage.
 
 
 %%%===================================================================
@@ -35,16 +41,15 @@ get_file(LocalName) when is_binary(LocalName) ->
 
 mnesia_table_name() -> ?MODULE.
 
-% TODO: implement
-try_recode(OriginalFilePath) ->
+try_recode(OriginalFilePath, RecodedFilePath) ->
     {OriginalXml, _} = xmerl_scan:file(OriginalFilePath),
     RecodedXml = recode_xml(OriginalXml),
     RecodedXmlString = xmerl:export_simple([RecodedXml], xmerl_xml),
-    RecodedFilePath = podrec_util:generate_temp_filepath(),
+    lager:info("writing to ~p", [RecodedFilePath]),
     {ok, File} = file:open(RecodedFilePath, [write, {encoding, utf8}]),
     ok = io:format(File, "~ts~n", [lists:flatten(RecodedXmlString)]),
     ok = file:delete(OriginalFilePath),
-    {finished, RecodedFilePath}.
+    finished.
 
 % rss
 recode_xml(#xmlElement{name=rss, parents=[], content=Content}=Elem) ->

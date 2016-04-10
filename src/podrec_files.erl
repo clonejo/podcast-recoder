@@ -11,7 +11,6 @@
          get_file/2,
          exists_cached_file/1,
          update_orig_url/3,
-         update_last_fetch/2,
          update_last_requested/2]).
 
 %% gen_server callbacks
@@ -33,12 +32,16 @@
 %%% Behaviour methods
 %%%===================================================================
 
+-callback start_link() -> T :: term().
+
+-callback start_link_storage() -> T :: term().
+
 -callback mnesia_table_name() -> TableName :: atom().
 
 -callback get_cached_file_path(LocalName :: binary()) -> Path :: term().
 
--callback try_recode(OriginalFilePath :: term()) ->
-    {finished, RecodedFilePath :: term()} | {error, Reason :: term()}.
+-callback try_recode(OriginalFilePath :: term(), RecodedFilePath :: term()) ->
+    finished | {error, Reason :: term()}.
 
 -callback file_fetch_user_timeout() -> Milliseconds :: integer().
 
@@ -46,6 +49,9 @@
 
 -callback get_file_preconfigured_url(LocalName :: binary()) ->
     {ok, Path :: term()} | {error, Reason :: term()}.
+
+-callback get_storage_gen_server_name() ->
+    GenServerName :: atom().
 
 %%%===================================================================
 %%% API
@@ -62,37 +68,39 @@ start_link(Callback) when is_atom(Callback) ->
     gen_server:start_link({local, Callback}, ?MODULE, [Callback], []).
 
 get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    CachedPath = Callback:get_cached_file_path(LocalName),
-    R = case exists_cached_file(CachedPath) of
+    FileRev = podrec_storage:get_file_rev(LocalName, Callback),
+    R = case podrec_storage:exists_cached_file(FileRev) of
             true ->
-                case is_cached_file_recent(LocalName, Callback) of
+                case podrec_storage:is_cached_file_recent(FileRev, Callback) of
                     true ->
                         lager:info("Req:~p cache is recent", [LocalName]),
-                        {ok, CachedPath};
+                        {ok, FileRev};
                     false ->
                         lager:info("Req:~p cache is not recent, trying to fetch ...", [LocalName]),
                         case try_fetch(LocalName, Callback) of
-                            {ok, CachedPath} ->
+                            {ok, _} ->
                                 lager:info("Req:~p fetch successful", [LocalName]),
-                                {ok, CachedPath};
+                                {ok, podrec_storage:get_file_rev(LocalName, Callback)};
+                            % FIXME: don't serve older version on 404, return 404 and delete local version
                             {error, Reason} ->
-                                lager:info("Req:~p error on fetching, serving older version (error: ~p)", [LocalName, Reason]),
-                                {ok, CachedPath} % just serve older version :P
+                                lager:info("Req:~p error on fetching, serving older version (error: ~p)",
+                                           [LocalName, Reason]),
+                                {ok, FileRev} % just serve older version :P
                         end
                 end;
             false ->
                 lager:info("Req:~p not in cache, trying to fetch ...", [LocalName]),
                 case try_fetch(LocalName, Callback) of
-                    {ok, CachedPath} ->
+                    {ok, NewFileRevPath} ->
                         lager:info("Req:~p fetch successful", [LocalName]),
-                        {ok, CachedPath};
+                        {ok, podrec_storage:get_file_rev(NewFileRevPath, Callback)};
                     {error, Reason} ->
                         lager:info("Req:~p error on fetching, reason: ~p", [LocalName, Reason]),
                         {error, Reason}
                 end
         end,
     case R of
-        {ok, _CachedPath} ->
+        {ok, _} ->
             update_last_requested(LocalName, Callback);
         {error, _Reason} ->
             ok
@@ -107,14 +115,6 @@ update_orig_url(LocalName, Url, Callback) when is_binary(LocalName), is_binary(U
                             [] -> #file{local_name=LocalName}
                         end,
                  mnesia:write(Callback:mnesia_table_name(), File#file{orig_url=Url}, write) end,
-    {atomic, ok} = mnesia:transaction(T),
-    ok.
-
-update_last_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    Now = erlang:system_time(seconds),
-    T = fun() -> [Feed] = mnesia:read(Callback:mnesia_table_name(), LocalName),
-                 mnesia:write(Callback:mnesia_table_name(), Feed#file{last_fetch=Now}, write)
-        end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
 
@@ -182,21 +182,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 exists_cached_file(Path) ->
     filelib:is_regular(Path).
-
-is_cached_file_recent(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    T = fun() -> mnesia:read(Callback:mnesia_table_name(), LocalName) end,
-    case mnesia:transaction(T) of
-        {atomic, [#file{last_fetch=LastFetch}]} ->
-            case LastFetch of
-                undefined ->
-                    false;
-                _ when is_integer(LastFetch) ->
-                    FeedRecent = Callback:file_recent(),
-                    erlang:system_time(seconds) - LastFetch < FeedRecent
-            end;
-        {atomic, []} ->
-            false
-    end.
 
 
 try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
