@@ -11,7 +11,8 @@
 
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
-         file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1]).
+         file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1,
+         get_max_cache_size/0]).
 
 -include_lib("records.hrl").
 
@@ -39,6 +40,9 @@ add_enclosure_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
     ok = podrec_files:update_orig_url(LocalName, Url, ?MODULE).
 
 get_storage_gen_server_name() -> podrec_enclosures_storage.
+
+get_max_cache_size() ->
+    podrec_util:get_env(max_enclosures_cache_size, 4*1024*1024).
 
 
 %%%===================================================================

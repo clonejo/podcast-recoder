@@ -50,8 +50,10 @@
 -callback get_file_preconfigured_url(LocalName :: binary()) ->
     {ok, Path :: term()} | {error, Reason :: term()}.
 
--callback get_storage_gen_server_name() ->
-    GenServerName :: atom().
+-callback get_storage_gen_server_name() -> GenServerName :: atom().
+
+%% @doc in KiB
+-callback get_max_cache_size() -> MaxCacheSize :: integer().
 
 %%%===================================================================
 %%% API

@@ -37,7 +37,6 @@ Todo
 
 (in order of importance)
  - required for first release:
-   - delete old cached files adhering to a quota
    - http_file_handler: honour if-not-modified
    - http_file_handler: use gzip compression
    - streaming, download, recode and send to the client at the same time

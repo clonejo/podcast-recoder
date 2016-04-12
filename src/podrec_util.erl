@@ -9,6 +9,7 @@
          move_file/2,
          get_file_mtime/1,
          set_file_mtime/2,
+         get_file_size/1,
          kill_port_os_process/2,
          bin_to_hex/1]).
 
@@ -47,6 +48,14 @@ set_file_mtime(MTime, Path) ->
     {ok, FileInfo} = file:read_file_info(Path, [{time, posix}]),
     NewFileInfo = FileInfo#file_info{mtime=MTime},
     ok = file:write_file_info(Path, NewFileInfo, [{time, posix}]).
+
+get_file_size(Path) ->
+    case file:read_file_info(Path, [{time, posix}]) of
+        {error, Reason} ->
+            {error, Reason};
+        {ok, FileInfo} ->
+            FileInfo#file_info.size
+    end.
 
 kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
     {os_pid, OsPid} = erlang:port_info(Port, os_pid),

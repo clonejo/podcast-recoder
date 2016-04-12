@@ -11,7 +11,8 @@
 
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
-         file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1]).
+         file_fetch_user_timeout/0, file_recent/0, get_file_preconfigured_url/1,
+         get_max_cache_size/0]).
 
 -include_lib("records.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
@@ -33,6 +34,9 @@ get_file(LocalName) when is_binary(LocalName) ->
     podrec_files:get_file(LocalName, ?MODULE).
 
 get_storage_gen_server_name() -> podrec_feeds_storage.
+
+get_max_cache_size() ->
+    podrec_util:get_env(max_feeds_cache_size, 1*1024*1024).
 
 
 %%%===================================================================

@@ -16,6 +16,10 @@
 %  - gen_server
 %  - file paths are only handled internally, to avoid race conditions
 %    - get_file_rev() returns a file descriptor
+%
+% The storage servers will clean up the *_cache directories regularly
+% (storage_cleanup_interval option). The given max cache sizes are not hard
+% limits, but determine how much is deleted during each cleanup.
 
 -behaviour(gen_server).
 
@@ -39,7 +43,7 @@
 
 -record(state, {callback}).
 
--record(file_rev, {last_fetch, % timestamp when the file has last been fetched (by this module)
+-record(file_rev, {last_fetch, % timestamp when the file has last been fetched
                    file % undefined or a file descriptor if the file exists
                   }).
 
@@ -115,6 +119,7 @@ get_fd(#file_rev{file={_, Fd}}) -> Fd.
 %% @end
 %%--------------------------------------------------------------------
 init([Callback]) ->
+    cleanup_int(Callback),
     {ok, #state{callback=Callback}}.
 
 %%--------------------------------------------------------------------
@@ -175,6 +180,10 @@ handle_cast({}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(cleanup, #state{callback=Callback}=State) ->
+    cleanup_int(Callback),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -249,4 +258,37 @@ update_last_requested_int(LocalName, Callback) when is_binary(LocalName), is_ato
         end,
     {atomic, ok} = mnesia:transaction(T),
     ok.
+
+cleanup_int(Callback) ->
+    MaxKBytes = Callback:get_max_cache_size(),
+    lager:info("running cleanup (~p), shrinking to ~pMiB", [Callback, MaxKBytes div 1024]),
+    T = fun() -> mnesia:select(Callback:mnesia_table_name(), [{#file{local_name='$1', last_requested='$2', _='_'},
+                                                               [], [{{'$1', '$2'}}]}]) end,
+    {atomic, Files} = mnesia:transaction(T),
+    F = fun({LocalName, LastRequested}) ->
+                Path = Callback:get_cached_file_path(LocalName),
+                case podrec_util:get_file_size(Path) of
+                    {error, enoent} ->
+                        false;
+                    Size ->
+                        {true, {LocalName, Path, LastRequested, Size}}
+                end
+        end,
+    FilesWithSizes = lists:filtermap(F, Files),
+    SortedFiles = lists:sort(fun({_, _, A, _}, {_, _, B, _}) -> A > B end, FilesWithSizes),
+    Now = erlang:monotonic_time(seconds),
+    FoldFun = fun({LocalName, Path, LastRequested, Size}, RemainingBytes) ->
+                          case RemainingBytes >= Size of
+                              true -> % keep file
+                                  RemainingBytes - Size;
+                              false -> % delete file
+                                  lager:info("cleanup (~p): deleting ~p, last requested ~p seconds ago",
+                                             [Callback, LocalName, Now - LastRequested]),
+                                  ok = file:delete(Path),
+                                  RemainingBytes
+                          end
+                  end,
+    R = lists:foldl(FoldFun, MaxKBytes*1024, SortedFiles),
+    lager:info("finished cleanup (~p), leftover space: ~pMiB", [Callback, R div 1024 div 1024]),
+    erlang:send_after(podrec_util:get_env(storage_cleanup_interval, 60*1000), self(), cleanup).
 
