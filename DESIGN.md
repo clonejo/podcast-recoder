@@ -42,9 +42,8 @@ Todo
    - http_file_handler: use gzip compression
    - streaming, download, recode and send to the client at the same time
  - required for publicly hosting podcasts:
-   - regularly request orig url for each feed/enclosure. delete cached version
-     if 404.
    - to check for modifications, do a HEAD request without creating a fetch job
+   - on HEAD request delete cached version if 404.
  - approximate file sizes in the feed
  - web page which lists cached versions of feeds and enclosures (show mnesia
    tables (feeds, enclosures)

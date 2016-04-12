@@ -35,7 +35,7 @@ Mail: [clonejo@shakik.de](mailto:clonejo@shakik.de)
 
 License (AGPL)
 ==============
-Copyright 2015 Feiko Nanninga
+Copyright 2015-2016 Feiko Nanninga
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
