@@ -1,4 +1,4 @@
--module(podrec_attachments).
+-module(podrec_enclosures).
 % Copyright 2015 Feiko Nanninga
 % This file is part of podcast_recoder, a project licensed under the terms of
 % the GNU Affero General Public License Version 3 (see LICENSE).
@@ -7,7 +7,7 @@
 
 %% API
 -export([init_file_table/0, start_link/0, start_link_storage/0, get_file/1, get_file_url/1,
-         get_storage_gen_server_name/0, add_attachment_to_db/2]).
+         get_storage_gen_server_name/0, add_enclosure_to_db/2]).
 
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
@@ -33,12 +33,12 @@ get_file(LocalName) when is_binary(LocalName) ->
 
 get_file_url(LocalName) when is_binary(LocalName) ->
     BaseUrl = podrec_util:get_env(base_url),
-    [BaseUrl, <<"attachments/">>, LocalName].
+    [BaseUrl, <<"enclosures/">>, LocalName].
 
-add_attachment_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
+add_enclosure_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
     ok = podrec_files:update_orig_url(LocalName, Url, ?MODULE).
 
-get_storage_gen_server_name() -> podrec_attachments_storage.
+get_storage_gen_server_name() -> podrec_enclosures_storage.
 
 
 %%%===================================================================
@@ -77,13 +77,13 @@ try_recode(OriginalFilePath, RecodedFilePath) ->
     F().
 
 get_cached_file_path(LocalName) when is_binary(LocalName) ->
-    filename:join([podrec_util:get_env(cached_attachments_path, <<"attachments_cache">>),
+    filename:join([podrec_util:get_env(cached_enclosures_path, <<"enclosures_cache">>),
                    LocalName]).
 
 get_file_preconfigured_url(_LocalName) when is_binary(_LocalName) ->
     {error, unknown_file}.
 
 file_fetch_user_timeout() ->
-    podrec_util:get_env(attachment_fetch_user_timeout, 600000).
+    podrec_util:get_env(enclosure_fetch_user_timeout, 600000).
 file_recent() ->
-    podrec_util:get_env(attachment_recent, 600).
+    podrec_util:get_env(enclosure_recent, 600).

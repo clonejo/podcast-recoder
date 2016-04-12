@@ -32,7 +32,7 @@ start(_StartType, _StartArgs) ->
     WebsitePath = podrec_util:get_env(website_path, <<"website.html">>),
     Routes = [{'_', [{"/", cowboy_static, {file, WebsitePath}},
                      {"/feeds/:name", podrec_http_file_handler, #{callback => podrec_feeds}},
-                     {"/attachments/:name", podrec_http_file_handler, #{callback => podrec_attachments}}
+                     {"/enclosures/:name", podrec_http_file_handler, #{callback => podrec_enclosures}}
                     ]}],
     Dispatch = cowboy_router:compile(Routes),
     {ok, _} = cowboy:start_http(podcast_recoder, podrec_util:get_env(listener_threads, 100),
@@ -55,7 +55,7 @@ initdb() ->
     ok = mnesia:create_schema([node()]),
     ok = mnesia:start(),
     ok = podrec_feeds:init_file_table(),
-    ok = podrec_attachments:init_file_table(),
+    ok = podrec_enclosures:init_file_table(),
     stopped = mnesia:stop(),
     io:format("Finished setting up db.~n"),
     ok.

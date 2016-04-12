@@ -68,7 +68,9 @@ start_link(Callback) when is_atom(Callback) ->
     gen_server:start_link({local, Callback}, ?MODULE, [Callback], []).
 
 get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    lager:debug("get_file(~p, ~p)", [LocalName, Callback]),
     FileRev = podrec_storage:get_file_rev(LocalName, Callback),
+    lager:debug("FileRev=~p", [FileRev]),
     R = case podrec_storage:exists_cached_file(FileRev) of
             true ->
                 case podrec_storage:is_cached_file_recent(FileRev, Callback) of
@@ -109,7 +111,7 @@ get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
 
 %% @doc Updates a file's orig_url in the database. Creates entry if necessary.
 update_orig_url(LocalName, Url, Callback) when is_binary(LocalName), is_binary(Url), is_atom(Callback) ->
-    lager:info("adding ~p to database", [Url]),
+    lager:debug("adding ~p to database", [Url]),
     T = fun() -> File = case mnesia:read(Callback:mnesia_table_name(), LocalName) of
                             [F] -> F;
                             [] -> #file{local_name=LocalName}
@@ -185,6 +187,7 @@ exists_cached_file(Path) ->
 
 
 try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    lager:debug("try_fetch(~p, ~p)", [LocalName, Callback]),
     case get_file_original_url(LocalName, Callback) of
         {ok, OriginalUrl} ->
             Timeout = Callback:file_fetch_user_timeout(),
@@ -200,6 +203,7 @@ try_fetch(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
     end.
 
 get_file_original_url(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    lager:debug("get_file_original_url(~p, ~p)", [LocalName, Callback]),
     T = fun() -> mnesia:read(Callback:mnesia_table_name(), LocalName) end,
     case mnesia:transaction(T) of
         {atomic, [#file{orig_url=DbUrl}]} ->

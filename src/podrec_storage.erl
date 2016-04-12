@@ -62,6 +62,7 @@ start_link(Callback) when is_atom(Callback) ->
     gen_server:start_link({local, GenServerName}, ?MODULE, [Callback], []).
 
 get_file_rev(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    lager:debug("get_file_rev(~p,~p)", [LocalName, Callback]),
     GenServerName = Callback:get_storage_gen_server_name(),
     gen_server:call(GenServerName, {get_file_rev, LocalName}).
 
@@ -88,11 +89,11 @@ create_temp_filename(LocalName, Callback) when is_binary(LocalName), is_atom(Cal
     ok = filelib:ensure_dir(Destination),
     Destination.
 
-update_file(LocalName, NewRevFilePath, OriginalMTime, FetchTime, Callback) when
-      is_binary(LocalName), is_integer(OriginalMTime), is_integer(FetchTime), is_atom(Callback) ->
+update_file(LocalName, NewRevFilePath, FetchTime, OriginalMTime, Callback) when
+      is_binary(LocalName), is_integer(FetchTime), is_integer(OriginalMTime), is_atom(Callback) ->
+    lager:debug("update_file(~p,~p,~p,~p,~p)", [LocalName, NewRevFilePath, FetchTime, OriginalMTime, Callback]),
     GenServerName = Callback:get_storage_gen_server_name(),
-    gen_server:call(GenServerName, {update_file, LocalName, NewRevFilePath,
-                                    OriginalMTime, FetchTime}).
+    gen_server:call(GenServerName, {update_file, LocalName, NewRevFilePath, FetchTime, OriginalMTime}).
 
 get_file_size(#file_rev{file={FileSize, _}}) when is_integer(FileSize) -> FileSize.
 get_fd(#file_rev{file={_, Fd}}) -> Fd.
@@ -132,15 +133,23 @@ init([Callback]) ->
 %%--------------------------------------------------------------------
 handle_call({get_file_rev, LocalName}, _From, #state{callback=Callback}=State) when is_binary(LocalName) ->
     Reply = get_file_rev_int(LocalName, Callback),
-    ok = update_last_fetch_int(LocalName, Callback),
+    ok = update_last_requested_int(LocalName, Callback),
     {reply, Reply, State};
 
-handle_call({update_file, LocalName, NewRevFilePath, OriginalMTime},
+handle_call({update_file, LocalName, NewRevFilePath, FetchTime, OriginalMTime},
             _From, #state{callback=Callback}=State) when is_binary(LocalName), is_integer(OriginalMTime) ->
     CachedPath = Callback:get_cached_file_path(LocalName),
+    lager:info("updating file in cache: ~p, ~p -> ~p", [NewRevFilePath, OriginalMTime, LocalName]),
     ok = podrec_util:move_file(NewRevFilePath, CachedPath),
     ok = podrec_util:set_file_mtime(OriginalMTime, CachedPath),
-    ok = update_last_fetch_int(LocalName, Callback),
+    T = fun() -> case mnesia:read(Callback:mnesia_table_name(), LocalName) of
+                     [File] ->
+                         mnesia:write(Callback:mnesia_table_name(), File#file{last_fetch=FetchTime}, write);
+                     [] ->
+                         ok
+                 end
+        end,
+    {atomic, ok} = mnesia:transaction(T),
     {reply, LocalName, State}.
 
 %%--------------------------------------------------------------------
@@ -226,10 +235,17 @@ get_local_file(LocalName, Callback) when is_binary(LocalName) ->
             undefined
     end.
 
-update_last_fetch_int(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
-    FetchTime = erlang:monotonic_time(seconds),
-    T = fun() -> [File] = mnesia:read(Callback:mnesia_table_name(), LocalName),
-                 mnesia:write(Callback:mnesia_table_name(), File#file{last_fetch=FetchTime}, write)
+%% @private
+%% @doc
+%% updates last_fetch entry of a file in the db (if that file exists in db)
+update_last_requested_int(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    Time = erlang:monotonic_time(seconds),
+    T = fun() -> case mnesia:read(Callback:mnesia_table_name(), LocalName) of
+                     [File] ->
+                         mnesia:write(Callback:mnesia_table_name(), File#file{last_requested=Time}, write);
+                     [] ->
+                         ok
+                 end
         end,
     {atomic, ok} = mnesia:transaction(T),
     ok.

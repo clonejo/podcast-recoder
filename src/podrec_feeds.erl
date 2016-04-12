@@ -76,8 +76,8 @@ recode_xml(#xmlElement{name=enclosure, parents=[{item, _}, {channel, _}, {rss, _
                        content=Content, attributes=Attributes}=Elem) ->
     {value, #xmlAttribute{value=Url}=UrlAttr} = lists:keysearch(url, 2, Attributes),
     LocalName = convert_to_local_name(Url),
-    ok = podrec_attachments:add_attachment_to_db(LocalName, list_to_binary(Url)),
-    NewUrl = podrec_attachments:get_file_url(LocalName),
+    ok = podrec_enclosures:add_enclosure_to_db(LocalName, list_to_binary(Url)),
+    NewUrl = podrec_enclosures:get_file_url(LocalName),
     NewAttributes = lists:keyreplace(url, 2, Attributes, UrlAttr#xmlAttribute{value=NewUrl}),
     Elem#xmlElement{content=lists:map(fun recode_xml/1, Content), attributes=NewAttributes};
 
@@ -85,9 +85,9 @@ recode_xml(Unknown) ->
     Unknown.
 
 file_fetch_user_timeout() ->
-    podrec_util:get_env(feed_fetch_user_timeout, 60000).
+    podrec_util:get_env(feed_fetch_user_timeout, 60*1000).
 file_recent() ->
-    podrec_util:get_env(feed_recent, 600).
+    podrec_util:get_env(feed_recent, 10*60).
 
 get_cached_file_path(LocalName) when is_binary(LocalName) ->
     filename:join([podrec_util:get_env(cached_feeds_path, <<"feeds_cache">>),
@@ -101,7 +101,6 @@ get_file_preconfigured_url(LocalName) when is_binary(LocalName) ->
                     {ok, OriginalUrl}
             end.
 
-% TODO: normalize, command injection!
 convert_to_local_name(Url) ->
     list_to_binary([podrec_util:bin_to_hex(crypto:hash(sha256, Url)), <<".opus">>]).
 

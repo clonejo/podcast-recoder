@@ -35,8 +35,8 @@ init([]) ->
     {ok, {#{strategy => one_for_one},
           [#{id => podrec_feeds, start => {podrec_feeds, start_link, []}},
            #{id => podrec_feeds_storage, start => {podrec_feeds, start_link_storage, []}},
-           #{id => podrec_attachments, start => {podrec_attachments, start_link, []}},
-           #{id => podrec_attachments_storage, start => {podrec_attachments, start_link_storage, []}}]}}.
+           #{id => podrec_enclosures, start => {podrec_enclosures, start_link, []}},
+           #{id => podrec_enclosures_storage, start => {podrec_enclosures, start_link_storage, []}}]}}.
 
 %%====================================================================
 %% Internal functions
