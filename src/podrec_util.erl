@@ -11,7 +11,8 @@
          set_file_mtime/2,
          get_file_size/1,
          kill_port_os_process/2,
-         bin_to_hex/1]).
+         bin_to_hex/1,
+         time_format_http/1]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -84,3 +85,7 @@ kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
 
 bin_to_hex(Bin) when is_binary(Bin) ->
     list_to_binary([io_lib:format("~2.16.0B", [B]) || <<B:8>> <= Bin]).
+
+time_format_http(Time) ->
+    qdate:to_string("D, d M Y H:i:s", Time) ++ " GMT".
+

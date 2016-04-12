@@ -87,7 +87,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
     ReqHeaders = case CachedMTime of
                      undefined -> [];
                      CachedMTime when is_integer(CachedMTime) ->
-                         [{"if-modified-since", time_format_http(CachedMTime)}]
+                         [{"if-modified-since", podrec_util:time_format_http(CachedMTime)}]
                   end ++ [{"accept-encoding", "gzip"}],
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],
                              [{sync, false}, {stream, self}]),
@@ -118,9 +118,6 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
             {error, Reason}
     end.
 
-
-time_format_http(Time) ->
-    qdate:to_string("D, d M Y H:i:s", Time) ++ " GMT".
 
 write_streamed_data_to_file(RequestId, FilePath) ->
     ok = filelib:ensure_dir(FilePath),

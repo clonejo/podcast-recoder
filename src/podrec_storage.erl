@@ -31,7 +31,8 @@
          create_temp_filename/2,
          update_file/5,
          get_file_size/1,
-         get_fd/1]).
+         get_fd/1,
+         get_mtime/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -43,8 +44,10 @@
 
 -record(state, {callback}).
 
--record(file_rev, {last_fetch, % timestamp when the file has last been fetched
-                   file % undefined or a file descriptor if the file exists
+-record(file_rev, {last_fetch,  % timestamp when the file has last been fetched
+                   mtime,       % modification time of the original file
+                   size,        % undefined or the size of the file if it exists
+                   fd           % undefined or a file descriptor if the file exists
                   }).
 
 -include_lib("records.hrl").
@@ -79,7 +82,7 @@ is_cached_file_recent(#file_rev{last_fetch=LastFetch}, Callback) ->
             erlang:system_time(seconds) - LastFetch < FeedRecent
     end.
 
-exists_cached_file(#file_rev{file=File}) ->
+exists_cached_file(#file_rev{fd=File}) ->
     case File of
         undefined -> false;
         _ -> true
@@ -99,8 +102,9 @@ update_file(LocalName, NewRevFilePath, FetchTime, OriginalMTime, Callback) when
     GenServerName = Callback:get_storage_gen_server_name(),
     gen_server:call(GenServerName, {update_file, LocalName, NewRevFilePath, FetchTime, OriginalMTime}).
 
-get_file_size(#file_rev{file={FileSize, _}}) when is_integer(FileSize) -> FileSize.
-get_fd(#file_rev{file={_, Fd}}) -> Fd.
+get_file_size(#file_rev{size=FileSize}) when is_integer(FileSize) -> FileSize.
+get_fd(#file_rev{fd=Fd}) -> Fd.
+get_mtime(#file_rev{mtime=MTime}) -> MTime.
 
 
 %%%===================================================================
@@ -218,11 +222,10 @@ code_change(_OldVsn, State, _Extra) ->
 get_file_rev_int(LocalName, Callback) ->
     case get_file_from_db(LocalName, Callback) of
         {ok, #file{last_fetch=LastFetch}} ->
-            FileRev = #file_rev{last_fetch=LastFetch},
-            F = FileRev#file_rev{file=get_local_file(LocalName, Callback)},
-            F;
+            FileRev = get_local_file(LocalName, Callback),
+            FileRev#file_rev{last_fetch=LastFetch};
         {error, unknown_file} ->
-            #file_rev{file=get_local_file(LocalName, Callback)}
+            get_local_file(LocalName, Callback)
     end.
 
 get_file_from_db(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
@@ -239,9 +242,10 @@ get_local_file(LocalName, Callback) when is_binary(LocalName) ->
     case file:open(CachedPath, [read, binary]) of
         {ok, File} ->
             FileSize = filelib:file_size(CachedPath),
-            {FileSize, File};
+            MTime = podrec_util:get_file_mtime(CachedPath),
+            #file_rev{size=FileSize, fd=File, mtime=MTime};
         {error, enoent} ->
-            undefined
+            #file_rev{}
     end.
 
 %% @private
