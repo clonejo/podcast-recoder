@@ -1,5 +1,5 @@
 -module(podrec_storage).
-% Copyright 2015 Feiko Nanninga
+% Copyright 2015-2016 Feiko Nanninga
 % This file is part of podcast_recoder, a project licensed under the terms of
 % the GNU Affero General Public License Version 3 (see LICENSE).
 
@@ -15,7 +15,7 @@
 %
 %  - gen_server
 %  - file paths are only handled internally, to avoid race conditions
-%    - get_file() returns a file descriptor
+%    - get_file_rev() returns a file descriptor
 
 -behaviour(gen_server).
 
@@ -132,14 +132,15 @@ init([Callback]) ->
 %%--------------------------------------------------------------------
 handle_call({get_file_rev, LocalName}, _From, #state{callback=Callback}=State) when is_binary(LocalName) ->
     Reply = get_file_rev_int(LocalName, Callback),
+    ok = update_last_fetch_int(LocalName, Callback),
     {reply, Reply, State};
 
-handle_call({update_file, LocalName, NewRevFilePath, OriginalMTime, FetchTime},
+handle_call({update_file, LocalName, NewRevFilePath, OriginalMTime},
             _From, #state{callback=Callback}=State) when is_binary(LocalName), is_integer(OriginalMTime) ->
     CachedPath = Callback:get_cached_file_path(LocalName),
     ok = podrec_util:move_file(NewRevFilePath, CachedPath),
     ok = podrec_util:set_file_mtime(OriginalMTime, CachedPath),
-    ok = update_last_fetch_int(LocalName, FetchTime, Callback),
+    ok = update_last_fetch_int(LocalName, Callback),
     {reply, LocalName, State}.
 
 %%--------------------------------------------------------------------
@@ -152,9 +153,7 @@ handle_call({update_file, LocalName, NewRevFilePath, OriginalMTime, FetchTime},
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_cast({update_last_fetch, LocalName, FetchTime}, #state{callback=Callback}=State) when is_binary(LocalName) ->
-    ok = update_last_fetch_int(LocalName, FetchTime, Callback),
+handle_cast({}, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -227,7 +226,8 @@ get_local_file(LocalName, Callback) when is_binary(LocalName) ->
             undefined
     end.
 
-update_last_fetch_int(LocalName, FetchTime, Callback) when is_binary(LocalName), is_atom(Callback) ->
+update_last_fetch_int(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
+    FetchTime = erlang:monotonic_time(seconds),
     T = fun() -> [File] = mnesia:read(Callback:mnesia_table_name(), LocalName),
                  mnesia:write(Callback:mnesia_table_name(), File#file{last_fetch=FetchTime}, write)
         end,

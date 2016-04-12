@@ -25,6 +25,7 @@ Modules
    - `http_file_handler`: serves files through HTTP
    - `files`: manages jobs, keeps a queue to not overwhelm the CPU; behaviour
    - `file_worker`: started by `files`
+   - `storage`: handles updates to the `*_cache` folder, gives out file descriptors
  - `feeds`: implements `files` behaviour
  - `attachments`: implements `files` behaviour
  - `util`
