@@ -52,8 +52,8 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName, callback=Call
                             finished ->
                                 {ok, podrec_storage:update_file(LocalName,
                                                                 RecodedFilePath,
-                                                                OriginalMTime,
                                                                 FetchTime,
+                                                                OriginalMTime,
                                                                 Callback)};
                             {error, Reason} ->
                                 {error, Reason}
