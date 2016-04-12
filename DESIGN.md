@@ -43,8 +43,6 @@ Todo
  - required for publicly hosting non-CC podcasts:
    - regularly request orig url for each feed/attachment. delete cached version
      if 404.
- - use etags when fetching
- - http_file_handler: honour if-none-match (etag)
  - streaming, download, recode and send to the client at the same time
  - approximate file sizes in the feed
  - web page which lists cached versions of feeds and attachments (show mnesia
@@ -52,3 +50,5 @@ Todo
  - web page which lists download status of feeds/attachments (data from
    feeds/attachments
  - time jump handler: remove last_fetch, last_requested in file tables
+ - use etags when fetching
+ - http_file_handler: honour if-none-match (etag)
