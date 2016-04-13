@@ -19,23 +19,37 @@ handle(Req, #state{callback=Callback}=State) ->
         {ok, FileRev} ->
             lager:info("delivering file from cache, FileRev=~p", [FileRev]),
             lager:debug("headers:~n~p", [element(1, cowboy_req:headers(Req2))]),
+            {IfModSinceStr, Req3} = cowboy_req:header(<<"if-modified-since">>, Req2),
+            IfModSince = case IfModSinceStr of
+                             undefined -> undefined;
+                             _ -> qdate:to_unixtime(IfModSinceStr)
+                         end,
+
             FileSize = podrec_storage:get_file_size(FileRev),
             MTime = podrec_storage:get_mtime(FileRev),
             Fd = podrec_storage:get_fd(FileRev),
             Compress = Callback:compressible(),
-            Req3 = cowboy_req:set_resp_header(<<"last-modified">>, podrec_util:time_format_http(MTime), Req2),
-            % so Cowboy only compresses when we give the whole body in cowboy_req:reply
-            case Compress of
-                false ->
-                    Req4 = cowboy_req:set_resp_body_fun(FileSize,
-                                                        fun(Socket, Transport) -> send_file(Fd, Socket, Transport) end,
-                                                        Req3),
-                    {ok, Req5} = cowboy_req:reply(200, [], Req4),
-                    {ok, Req5, State};
+            Req4 = cowboy_req:set_resp_header(<<"last-modified">>, podrec_util:time_format_http(MTime), Req3),
+
+            case IfModSince =:= MTime of
                 true ->
-                    Body = podrec_util:read_all(Fd, ?CHUNK_SIZE),
-                    {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-                    {ok, Req4, State}
+                    {ok, Req5} = cowboy_req:reply(304, [], <<"Not modified\n">>, Req4),
+                    {ok, Req5, State};
+
+                false->
+                    % so Cowboy only compresses when we give the whole body in cowboy_req:reply
+                    case Compress of
+                        false ->
+                            Req5 = cowboy_req:set_resp_body_fun(FileSize,
+                                                                fun(Socket, Transport) -> send_file(Fd, Socket, Transport) end,
+                                                                Req4),
+                            {ok, Req6} = cowboy_req:reply(200, [], Req5),
+                            {ok, Req6, State};
+                        true ->
+                            Body = podrec_util:read_all(Fd, ?CHUNK_SIZE),
+                            {ok, Req5} = cowboy_req:reply(200, [], Body, Req4),
+                            {ok, Req5, State}
+                    end
             end;
         {error, unknown_file} ->
             {ok, Req3} = cowboy_req:reply(404, [], <<"Unknown file\n">>, Req2),

@@ -41,11 +41,6 @@ add_enclosure_to_db(LocalName, Url) when is_binary(LocalName), is_binary(Url) ->
 
 get_storage_gen_server_name() -> podrec_enclosures_storage.
 
-get_max_cache_size() ->
-    podrec_util:get_env(max_enclosures_cache_size, 4*1024*1024).
-
-compressible() -> false.
-
 
 %%%===================================================================
 %%% Callbacks
@@ -91,5 +86,12 @@ get_file_preconfigured_url(_LocalName) when is_binary(_LocalName) ->
 
 file_fetch_user_timeout() ->
     podrec_util:get_env(enclosure_fetch_user_timeout, 600000).
+
 file_recent() ->
     podrec_util:get_env(enclosure_recent, 600).
+
+get_max_cache_size() ->
+    podrec_util:get_env(max_enclosures_cache_size, 4*1024*1024).
+
+compressible() -> false.
+
