@@ -38,8 +38,7 @@ Todo
 (in order of importance)
  - required for first release:
    - http_file_handler: honour if-not-modified
-   - http_file_handler: use gzip compression
-   - streaming, download, recode and send to the client at the same time
+   - streaming: download, recode and send to the client at the same time
  - required for publicly hosting podcasts:
    - to check for modifications, do a HEAD request without creating a fetch job
    - on HEAD request delete cached version if 404.

@@ -12,7 +12,8 @@
          get_file_size/1,
          kill_port_os_process/2,
          bin_to_hex/1,
-         time_format_http/1]).
+         time_format_http/1,
+         read_all/2]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -89,3 +90,12 @@ bin_to_hex(Bin) when is_binary(Bin) ->
 time_format_http(Time) ->
     qdate:to_string("D, d M Y H:i:s", Time) ++ " GMT".
 
+read_all(Fd, ChunkSize) ->
+    read_all(Fd, ChunkSize, []).
+read_all(Fd, ChunkSize, SoFar) ->
+    case file:read(Fd, ChunkSize) of
+        {ok, Chunk} ->
+            read_all(Fd, ChunkSize, [Chunk|SoFar]);
+        eof ->
+            lists:reverse(SoFar)
+    end.

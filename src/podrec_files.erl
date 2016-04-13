@@ -55,6 +55,8 @@
 %% @doc in KiB
 -callback get_max_cache_size() -> MaxCacheSize :: integer().
 
+-callback compressible() -> Compressibility :: boolean().
+
 %%%===================================================================
 %%% API
 %%%===================================================================

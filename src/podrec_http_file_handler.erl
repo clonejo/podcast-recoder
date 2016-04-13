@@ -18,15 +18,25 @@ handle(Req, #state{callback=Callback}=State) ->
     case podrec_files:get_file(LocalName, Callback) of
         {ok, FileRev} ->
             lager:info("delivering file from cache, FileRev=~p", [FileRev]),
+            lager:debug("headers:~n~p", [element(1, cowboy_req:headers(Req2))]),
             FileSize = podrec_storage:get_file_size(FileRev),
             MTime = podrec_storage:get_mtime(FileRev),
             Fd = podrec_storage:get_fd(FileRev),
+            Compress = Callback:compressible(),
             Req3 = cowboy_req:set_resp_header(<<"last-modified">>, podrec_util:time_format_http(MTime), Req2),
-            Req4 = cowboy_req:set_resp_body_fun(FileSize,
-                                                fun(Socket, Transport) -> send_file(Fd, Socket, Transport) end,
-                                                Req3),
-            {ok, Req5} = cowboy_req:reply(200, [], Req4),
-            {ok, Req5, State};
+            % so Cowboy only compresses when we give the whole body in cowboy_req:reply
+            case Compress of
+                false ->
+                    Req4 = cowboy_req:set_resp_body_fun(FileSize,
+                                                        fun(Socket, Transport) -> send_file(Fd, Socket, Transport) end,
+                                                        Req3),
+                    {ok, Req5} = cowboy_req:reply(200, [], Req4),
+                    {ok, Req5, State};
+                true ->
+                    Body = podrec_util:read_all(Fd, ?CHUNK_SIZE),
+                    {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
+                    {ok, Req4, State}
+            end;
         {error, unknown_file} ->
             {ok, Req3} = cowboy_req:reply(404, [], <<"Unknown file\n">>, Req2),
             {ok, Req3, State}
