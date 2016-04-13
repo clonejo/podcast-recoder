@@ -37,7 +37,7 @@ start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile(Routes),
     {ok, _} = cowboy:start_http(podcast_recoder, podrec_util:get_env(listener_threads, 100),
                                 [{port, podrec_util:get_env(port, 8080)},
-                                 {ip, {0,0,0,0,0,0,0,0}}], % enable IPv6
+                                 {ip, podrec_util:get_env(bind_address, {0,0,0,0,0,0,0,1})}], % listen locally
                                 [{env, [{dispatch, Dispatch}]},
                                  {compress, true}]),
     podrec_sup:start_link().
