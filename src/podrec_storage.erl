@@ -30,6 +30,7 @@
          exists_cached_file/1,
          create_temp_filename/2,
          update_file/5,
+         update_last_fetch/3,
          get_file_size/1,
          get_fd/1,
          get_mtime/1]).
@@ -76,9 +77,11 @@ get_file_rev(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) -
 is_cached_file_recent(#file_rev{last_fetch=LastFetch}, Callback) ->
     case LastFetch of
         undefined ->
+            lager:debug("last_fetch is undefined"),
             false;
         _ when is_integer(LastFetch) ->
             FeedRecent = Callback:file_recent(),
+            lager:debug("last_fetch is ~s ago", [podrec_util:debug_format_time(erlang:system_time(seconds) - LastFetch)]),
             erlang:system_time(seconds) - LastFetch < FeedRecent
     end.
 
@@ -101,6 +104,12 @@ update_file(LocalName, NewRevFilePath, FetchTime, OriginalMTime, Callback) when
     lager:debug("update_file(~p,~p,~p,~p,~p)", [LocalName, NewRevFilePath, FetchTime, OriginalMTime, Callback]),
     GenServerName = Callback:get_storage_gen_server_name(),
     gen_server:call(GenServerName, {update_file, LocalName, NewRevFilePath, FetchTime, OriginalMTime}).
+
+update_last_fetch(LocalName, FetchTime, Callback) when
+      is_binary(LocalName), is_integer(FetchTime), is_atom(Callback) ->
+    lager:debug("update_last_fetch(~p,~p,~p)", [LocalName, FetchTime, Callback]),
+    GenServerName = Callback:get_storage_gen_server_name(),
+    gen_server:call(GenServerName, {update_last_fetch, LocalName, FetchTime}).
 
 get_file_size(#file_rev{size=FileSize}) when is_integer(FileSize) -> FileSize.
 get_fd(#file_rev{fd=Fd}) -> Fd.
@@ -151,15 +160,15 @@ handle_call({update_file, LocalName, NewRevFilePath, FetchTime, OriginalMTime},
     lager:info("updating file in cache: ~p, ~p -> ~p", [NewRevFilePath, OriginalMTime, LocalName]),
     ok = podrec_util:move_file(NewRevFilePath, CachedPath),
     ok = podrec_util:set_file_mtime(OriginalMTime, CachedPath),
-    T = fun() -> case mnesia:read(Callback:mnesia_table_name(), LocalName) of
-                     [File] ->
-                         mnesia:write(Callback:mnesia_table_name(), File#file{last_fetch=FetchTime}, write);
-                     [] ->
-                         ok
-                 end
-        end,
-    {atomic, ok} = mnesia:transaction(T),
-    {reply, LocalName, State}.
+    ok = update_last_fetch_int(LocalName, FetchTime, Callback),
+    {reply, ok, State};
+
+handle_call({update_last_fetch, LocalName, FetchTime},
+            _From, #state{callback=Callback}=State) when is_binary(LocalName), is_integer(FetchTime) ->
+    CachedPath = Callback:get_cached_file_path(LocalName),
+    lager:info("updating file in cache: ~p (last_fetch)", [LocalName]),
+    ok = update_last_fetch_int(LocalName, FetchTime, Callback),
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,6 +265,17 @@ update_last_requested_int(LocalName, Callback) when is_binary(LocalName), is_ato
     T = fun() -> case mnesia:read(Callback:mnesia_table_name(), LocalName) of
                      [File] ->
                          mnesia:write(Callback:mnesia_table_name(), File#file{last_requested=Time}, write);
+                     [] ->
+                         ok
+                 end
+        end,
+    {atomic, ok} = mnesia:transaction(T),
+    ok.
+
+update_last_fetch_int(LocalName, FetchTime, Callback) ->
+    T = fun() -> case mnesia:read(Callback:mnesia_table_name(), LocalName) of
+                     [File] ->
+                         mnesia:write(Callback:mnesia_table_name(), File#file{last_fetch=FetchTime}, write);
                      [] ->
                          ok
                  end

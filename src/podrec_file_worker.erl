@@ -43,18 +43,22 @@ handle_cast({try_fetch, OriginalUrl}, #state{local_name=LocalName, callback=Call
                             request_original_file(OriginalUrl, undefined)
                     end,
     ReturnMsg = case RequestResult of
-                    not_modified ->
+                    {not_modified, FetchTime} ->
                         lager:info("Req:~p request successful, not modified", [LocalName]),
+                        ok = podrec_storage:update_last_fetch(LocalName,
+                                                              FetchTime,
+                                                              Callback),
                         {ok, CachedPath};
                     {finished, OriginalFilePath, OriginalMTime, FetchTime} ->
                         RecodedFilePath = podrec_storage:create_temp_filename(LocalName, Callback),
                         case Callback:try_recode(OriginalFilePath, RecodedFilePath) of
                             finished ->
-                                {ok, podrec_storage:update_file(LocalName,
+                                ok = podrec_storage:update_file(LocalName,
                                                                 RecodedFilePath,
                                                                 FetchTime,
                                                                 OriginalMTime,
-                                                                Callback)};
+                                                                Callback),
+                                {ok, CachedPath};
                             {error, Reason} ->
                                 {error, Reason}
                         end;
@@ -113,7 +117,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
             end,
             {finished, OriginalFilePath, OriginalMTime, FetchTime};
         not_modified ->
-            not_modified;
+            {not_modified, FetchTime};
         {error, Reason} ->
             {error, Reason}
     end.

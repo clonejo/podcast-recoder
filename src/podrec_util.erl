@@ -13,6 +13,7 @@
          kill_port_os_process/2,
          bin_to_hex/1,
          time_format_http/1,
+         debug_format_time/1,
          read_all/2]).
 
 -include_lib("kernel/include/file.hrl").
@@ -86,6 +87,22 @@ kill_port_os_process(Port, KillTimeout) when is_port(Port) ->
 
 bin_to_hex(Bin) when is_binary(Bin) ->
     list_to_binary([io_lib:format("~2.16.0B", [B]) || <<B:8>> <= Bin]).
+
+debug_format_time(Timestamp) ->
+    Seconds = Timestamp rem 60,
+    R = case Timestamp div 60 of
+            0 -> [integer_to_list(Seconds), "s"];
+            Minutes ->
+                case Minutes rem 60 of
+                    0 ->
+                        [integer_to_list(Minutes), "min", integer_to_list(Seconds), "s"];
+                    RMinutes ->
+                        Hours = Minutes div 60,
+                        [integer_to_list(Hours), "h", integer_to_list(RMinutes), "min", integer_to_list(Seconds), "s"]
+                end
+        end,
+    list_to_binary(R).
+
 
 time_format_http(Time) ->
     qdate:to_string("D, d M Y H:i:s", Time) ++ " GMT".
