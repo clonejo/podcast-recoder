@@ -8,14 +8,16 @@ A public instance with a number of podcasts is running at [TODO]().
 
 Installation
 ============
-This application is still in development. When deemed stable enough, I'll
-provide releases (builds).
+This application is still in development.
 
 `$ rebar3 release`
 
 For copyright reasons, you will likely want to have your instance not reachable
 from the open internet. Consider placing a reverse-proxy server in front with
 HTTP Authentication enabled or connecting through a (VPN) tunnel.
+
+This program runs media files from the internet through ffmpeg. Beware of RCE
+bugs.
 
 Development
 ===========
