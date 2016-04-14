@@ -15,7 +15,9 @@
     ssl,
     inets,
     erlware_commons,
-    qdate
+    qdate,
+    erlang_localtime,
+    xmerl
    ]},
   {env,[]},
   {modules, []},
