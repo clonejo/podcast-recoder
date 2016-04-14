@@ -7,7 +7,7 @@
 
 %% API
 -export([init_file_table/0, start_link/0, start_link_storage/0, get_file/1,
-         get_storage_gen_server_name/0]).
+         get_storage_gen_server_name/0, get_feeds/0]).
 
 %% Callbacks
 -export([mnesia_table_name/0, try_recode/2, get_cached_file_path/1,
@@ -33,12 +33,11 @@ start_link_storage() ->
 get_file(LocalName) when is_binary(LocalName) ->
     podrec_files:get_file(LocalName, ?MODULE).
 
-get_storage_gen_server_name() -> podrec_feeds_storage.
-
-get_max_cache_size() ->
-    podrec_util:get_env(max_feeds_cache_size, 1*1024*1024).
-
-compressible() -> true.
+get_feeds() ->
+    T = fun() -> mnesia:select(mnesia_table_name(), [{#file{local_name='$1', orig_url='$2', _='_'},
+                                                       [], [{{'$1', '$2'}}]}]) end,
+    {atomic, Feeds} = mnesia:transaction(T),
+    Feeds.
 
 
 %%%===================================================================
@@ -109,4 +108,11 @@ get_file_preconfigured_url(LocalName) when is_binary(LocalName) ->
 
 convert_to_local_name(Url) ->
     list_to_binary([podrec_util:bin_to_hex(crypto:hash(sha256, Url)), <<".opus">>]).
+
+get_storage_gen_server_name() -> podrec_feeds_storage.
+
+get_max_cache_size() ->
+    podrec_util:get_env(max_feeds_cache_size, 1*1024*1024).
+
+compressible() -> true.
 

@@ -1,0 +1,25 @@
+<html>
+    <head>
+        <title>Podcast Feeds - Podcast Recoder</title>
+    <body>
+        <h1>Podcast Feeds - Podcast Recoder</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>URL</th>
+                    <th>Original URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#feeds}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td><a href="{{url}}">{{url}}</a></td>
+                    <td><a href="{{orig_url}}">{{orig_url}}</a></td>
+                </tr>
+                {{/feeds}}
+            </tbody>
+        </table>
+    </body>
+</html>

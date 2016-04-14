@@ -31,6 +31,7 @@ start(_StartType, _StartArgs) ->
     % cowboy init
     WebsitePath = podrec_util:get_env(website_path, <<"website.html">>),
     Routes = [{'_', [{"/", cowboy_static, {file, WebsitePath}},
+                     {"/feeds/", podrec_http_feedlist, []},
                      {"/feeds/:name", podrec_http_file_handler, #{callback => podrec_feeds}},
                      {"/enclosures/:name", podrec_http_file_handler, #{callback => podrec_enclosures}}
                     ]}],

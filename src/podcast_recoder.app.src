@@ -17,7 +17,8 @@
     erlware_commons,
     qdate,
     erlang_localtime,
-    xmerl
+    xmerl,
+    bbmustache
    ]},
   {env,[]},
   {modules, []},
