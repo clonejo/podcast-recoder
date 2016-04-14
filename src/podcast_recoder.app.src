@@ -14,7 +14,8 @@
     mnesia,
     ssl,
     inets,
-    erlware_commons
+    erlware_commons,
+    qdate
    ]},
   {env,[]},
   {modules, []},
