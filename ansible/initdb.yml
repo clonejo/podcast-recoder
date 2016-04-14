@@ -1,0 +1,9 @@
+---
+- hosts: podcast_recoder
+  tasks:
+    - service: name=podcast_recoder state=stopped
+    - file: path=/home/podrec/Mnesia.nonode@nohost state=absent
+    - shell: chdir=/home/podrec erl -pa /home/podrec_build/repo/_build/default/lib/*/ebin -s podcast_recoder_app initdb -s init stop
+      become: true
+      become_user: podrec
+    - service: name=podcast_recoder state=started

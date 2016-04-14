@@ -4,8 +4,6 @@ Codec](http://opus-codec.org/). At 24kbit/s Opus delivers acceptable speech
 quality for just 10MB per hour. Perfect for edge-land or rate-limiting
 providers.
 
-A public instance with a number of podcasts is running at [TODO]().
-
 Installation
 ============
 This application is still in development.
@@ -19,13 +17,15 @@ HTTP Authentication enabled or connecting through a (VPN) tunnel.
 This program runs media files from the internet through ffmpeg. Beware of RCE
 bugs.
 
+Ansible playbooks can be found in `ansible/`. See [ansible/README.md](ansible/README.md).
+
 Development
 ===========
 An overview of the code can be found in `DESIGN.md`.
 
 Dev Setup:
  * Install [rebar3](https://www.rebar3.org/).
- * Have Erlang installed (at least v17).
+ * Have Erlang installed (at least v18).
  * `$ run-dev.sh`
    * This will fetch all deps, compile, and run podcast_recoder.
      [Sync](https://github.com/rustyio/sync) will also be started.

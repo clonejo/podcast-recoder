@@ -1,0 +1,13 @@
+
+[Unit]
+Description=Podcast Recoder
+
+[Service]
+User=podrec
+WorkingDirectory=/home/podrec
+ExecStart=/home/podrec_build/repo/_build/default/rel/podrec/bin/podrec
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

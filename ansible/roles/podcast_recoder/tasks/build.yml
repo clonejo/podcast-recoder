@@ -1,0 +1,10 @@
+---
+- name: fetch rebar3
+  git: repo=https://github.com/erlang/rebar3.git dest=/home/podrec_build/build_deps/rebar3
+- name: build rebar3
+  command: chdir=/home/podrec_build/build_deps/rebar3 creates=/home/podrec_build/build_deps/rebar3/rebar3 ./bootstrap
+
+- name: fetch podcast_recoder
+  git: repo=https://github.com/clonejo/podcast-recoder.git dest=/home/podrec_build/repo
+- name: build podcast_recoder
+  command: chdir=/home/podrec_build/repo /home/podrec_build/build_deps/rebar3/rebar3 release

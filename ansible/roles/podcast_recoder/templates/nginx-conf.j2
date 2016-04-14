@@ -1,0 +1,13 @@
+
+server {
+    listen 80;
+
+    {% if http_auth_password is defined %}
+    auth_basic "closed website";
+    auth_basic_user_file /etc/nginx/podrec-htpasswd;
+    {% endif %}
+
+    location / {
+        proxy_pass http://[::1]:8080;
+    }
+}

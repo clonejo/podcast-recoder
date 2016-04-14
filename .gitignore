@@ -21,3 +21,4 @@ _build
 Mnesia.*
 feeds_cache
 enclosures_cache
+ansible/*.retry

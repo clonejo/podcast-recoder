@@ -1,0 +1,48 @@
+---
+- name: add Erlang Solution's debian repo
+  apt_repository: repo="deb http://packages.erlang-solutions.com/debian jessie contrib"
+- name: download signing key
+  get_url:
+    dest: /root/erlang_solutions.asc
+    url: "http://packages.erlang-solutions.com/debian/erlang_solutions.asc"
+    checksum: "sha256:86232086a4dec44a5a505544d30822987a23a892db418f9e8e17dfff21eb0c23"
+- name: add signing key
+  apt_key: file=/root/erlang_solutions.asc
+
+- name: add backports repo
+  apt_repository: repo="deb http://httpredir.debian.org/debian jessie-backports main contrib non-free"
+
+- apt: name="{{ item }}" update_cache=yes
+  with_items:
+    - nginx
+    - sudo
+    - git
+    - erlang
+    - ffmpeg
+    - python-passlib
+
+- name: enable NTP
+  command: timedatectl set-ntp true
+- name: set timezone to UTC
+  command: timedatectl set-timezone UTC
+
+- file: path=/etc/nginx/sites-enabled/default state=absent
+- template: src=nginx-conf.j2 dest=/etc/nginx/sites-enabled/podcast_recoder
+- htpasswd: path=/etc/nginx/podrec-htpasswd name="{{ http_auth_user }}" password="{{ http_auth_password }}"
+- service: name=nginx state=restarted enabled=yes
+
+- user: name=podrec_build
+- shell: echo "podrec_build:*" | chpasswd -e
+- user: name=podrec
+- shell: echo "podrec:*" | chpasswd -e
+
+- include: build.yml
+  become: yes
+  become_user: podrec_build
+
+- copy: src=sys.config dest=/home/podrec_build/repo/_build/default/rel/podrec/releases/0.0.1/sys.config
+
+- copy: src=podcast_recoder.service dest=/home/podrec_build/
+- command: systemctl enable /home/podrec_build/podcast_recoder.service
+- command: systemctl daemon-reload
+- service: name=podcast_recoder state=restarted

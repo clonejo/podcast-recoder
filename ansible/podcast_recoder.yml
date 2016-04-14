@@ -1,0 +1,4 @@
+---
+- hosts: podcast_recoder
+  roles:
+    - podcast_recoder
