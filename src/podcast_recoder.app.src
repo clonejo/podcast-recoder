@@ -13,7 +13,8 @@
     cowboy,
     mnesia,
     ssl,
-    inets
+    inets,
+    erlware_commons
    ]},
   {env,[]},
   {modules, []},
