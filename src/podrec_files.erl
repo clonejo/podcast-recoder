@@ -99,7 +99,7 @@ get_file(LocalName, Callback) when is_binary(LocalName), is_atom(Callback) ->
                 case try_fetch(LocalName, Callback) of
                     {ok, NewFileRevPath} ->
                         lager:info("Req:~p fetch successful", [LocalName]),
-                        {ok, podrec_storage:get_file_rev(NewFileRevPath, Callback)};
+                        {ok, podrec_storage:get_file_rev(LocalName, Callback)};
                     {error, Reason} ->
                         lager:info("Req:~p error on fetching, reason: ~p", [LocalName, Reason]),
                         {error, Reason}
