@@ -9,5 +9,6 @@ server {
 
     location / {
         proxy_pass http://[::1]:8080;
+        proxy_read_timeout 1h;
     }
 }
