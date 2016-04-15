@@ -88,11 +88,13 @@ code_change(_OldVsn, State, _Extra) ->
 request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
     % we cannot use httpc's stream to file feature here, as httpc then won't
     % tell us the reply headers
+    UserAgent = podrec_util:get_env(user_agent, "Podcast Recoder"),
     ReqHeaders = case CachedMTime of
                      undefined -> [];
                      CachedMTime when is_integer(CachedMTime) ->
                          [{"if-modified-since", podrec_util:time_format_http(CachedMTime)}]
-                  end ++ [{"accept-encoding", "gzip"}],
+                  end ++ [{"user-agent", UserAgent},
+                          {"accept-encoding", "gzip"}],
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],
                              [{sync, false}, {stream, self}]),
     FetchTime = erlang:system_time(seconds),
