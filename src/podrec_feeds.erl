@@ -84,7 +84,9 @@ recode_xml(#xmlElement{name=enclosure, parents=[{item, _}, {channel, _}, {rss, _
     ok = podrec_enclosures:add_enclosure_to_db(LocalName, list_to_binary(Url)),
     NewUrl = podrec_enclosures:get_file_url(LocalName),
     NewAttributes = lists:keyreplace(url, 2, Attributes, UrlAttr#xmlAttribute{value=NewUrl}),
-    Elem#xmlElement{content=lists:map(fun recode_xml/1, Content), attributes=NewAttributes};
+    NewAttributes2 = lists:keystore(type, 2, NewAttributes,
+                                    #xmlAttribute{name=type, value = <<"audio/opus">>}),
+    Elem#xmlElement{content=lists:map(fun recode_xml/1, Content), attributes=NewAttributes2};
 
 recode_xml(Unknown) ->
     Unknown.
