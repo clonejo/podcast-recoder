@@ -147,9 +147,9 @@ write_streamed_data_to_file(RequestId, FilePath) ->
                    ok = file:close(File),
                    ok = file:delete(FilePath),
                  {error, Reason};
-             Msg ->
+             {http, Msg} ->
                  lager:error("msg: ~p", [Msg]),
-                 F()
+                 {error, {unknown_http_message, Msg}}
          after podrec_util:get_env(http_fetch_timeout, 300000) ->
                    httpc:cancel_request(RequestId),
                    ok = file:close(File),
