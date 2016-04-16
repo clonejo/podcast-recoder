@@ -93,8 +93,7 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                      undefined -> [];
                      CachedMTime when is_integer(CachedMTime) ->
                          [{"if-modified-since", podrec_util:time_format_http(CachedMTime)}]
-                  end ++ [{"user-agent", UserAgent},
-                          {"accept-encoding", "gzip"}],
+                  end ++ [{"user-agent", UserAgent}],
     {ok, RequestId} = httpc:request(get, {binary_to_list(OriginalUrl), ReqHeaders}, [],
                              [{sync, false}, {stream, self}]),
     FetchTime = erlang:system_time(seconds),
@@ -107,16 +106,6 @@ request_original_file(OriginalUrl, CachedMTime) when is_binary(OriginalUrl) ->
                                 Str when is_list(Str) ->
                                     qdate:to_unixtime(Str)
                             end,
-            case proplists:get_value("content-encoding", Headers) of
-                undefined ->
-                    ok;
-                "gzip" ->
-                    % TODO: do streaming compression, so we can decompress
-                    %       files larger than system memory
-                    {ok, Compressed} = file:read_file(OriginalFilePath),
-                    Decompressed = zlib:gunzip(Compressed),
-                    ok = file:write_file(OriginalFilePath, Decompressed)
-            end,
             {finished, OriginalFilePath, OriginalMTime, FetchTime};
         not_modified ->
             {not_modified, FetchTime};
