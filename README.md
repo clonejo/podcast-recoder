@@ -4,6 +4,8 @@ Codec](http://opus-codec.org/). At 24kbit/s Opus delivers acceptable speech
 quality for just 10MB per hour. Perfect for edge-land or rate-limiting
 providers.
 
+The *code structure* and a *list of todos* can be found in [DESIGN.md](DESIGN.md).
+
 Installation
 ============
 This application is still in development.
