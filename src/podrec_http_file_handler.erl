@@ -37,18 +37,19 @@ handle(Req, #state{callback=Callback}=State) ->
                     {ok, Req5, State};
 
                 false->
+                    {ok, Req5} = cowboy_req:set_resp_header(<<"content-type">>, <<"audio/ogg; codecs=opus">>, Req4),
                     % so Cowboy only compresses when we give the whole body in cowboy_req:reply
                     case Compress of
                         false ->
-                            Req5 = cowboy_req:set_resp_body_fun(FileSize,
+                            Req6 = cowboy_req:set_resp_body_fun(FileSize,
                                                                 fun(Socket, Transport) -> send_file(Fd, Socket, Transport) end,
-                                                                Req4),
-                            {ok, Req6} = cowboy_req:reply(200, [], Req5),
-                            {ok, Req6, State};
+                                                                Req5),
+                            {ok, Req7} = cowboy_req:reply(200, [], Req6),
+                            {ok, Req7, State};
                         true ->
                             Body = podrec_util:read_all(Fd, ?CHUNK_SIZE),
-                            {ok, Req5} = cowboy_req:reply(200, [], Body, Req4),
-                            {ok, Req5, State}
+                            {ok, Req6} = cowboy_req:reply(200, [], Body, Req5),
+                            {ok, Req6, State}
                     end
             end;
         {error, unknown_file} ->
