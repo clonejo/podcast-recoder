@@ -37,7 +37,7 @@ handle(Req, #state{callback=Callback}=State) ->
                     {ok, Req5, State};
 
                 false->
-                    {ok, Req5} = cowboy_req:set_resp_header(<<"content-type">>, <<"audio/ogg; codecs=opus">>, Req4),
+                    Req5 = cowboy_req:set_resp_header(<<"content-type">>, <<"audio/ogg; codecs=opus">>, Req4),
                     % so Cowboy only compresses when we give the whole body in cowboy_req:reply
                     case Compress of
                         false ->
