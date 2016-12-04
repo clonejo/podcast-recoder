@@ -36,6 +36,7 @@ Todo
 ====
 
 (in order of importance)
+ - automated integration test of the current featureset
  - streaming: download, recode and send to the client at the same time
  - required for publicly hosting podcasts:
    - to check for modifications, do a HEAD request without creating a fetch job
@@ -48,3 +49,9 @@ Todo
  - time jump handler: remove last_fetch, last_requested in file tables
  - use etags when fetching
  - http_file_handler: honour if-none-match (etag)
+ - save metadata with #file, #file_rev to improve logs:
+   - feeds: original title
+   - enclosures: title, duration, feed localname, publication date
+ - allow fetching of arbitrary feed URLs
+ - rewrite `<media:content />` (used by Sternengeschichten for enclosures)
+ - idea: length check after recoding and before permanently saving an episode to catch bad recodes?
